@@ -208,8 +208,21 @@ export function normalizeOffersResponse(raw: unknown): {
 
   return {
     summary: String(data.summary ?? '').trim() || 'Estas son las opciones que he encontrado.',
-    offers,
+    offers: preferLinkedOffers(offers),
   };
+}
+
+/**
+ * El usuario quiere poder comprar desde el resultado, así que una oferta con
+ * la ficha del producto enlazada vale más que una sin ella. Si hay al menos
+ * dos opciones con enlace, las que no lo tienen se descartan; si casi ninguna
+ * lo tiene, se conservan todas (con el enlace ausente señalizado en la
+ * interfaz) antes que dejar al usuario sin resultados.
+ */
+export function preferLinkedOffers(offers: SupplierOffer[]): SupplierOffer[] {
+  const linked = offers.filter((offer) => offer.sourceUrl !== null);
+  if (linked.length >= 2) return linked;
+  return [...linked, ...offers.filter((offer) => offer.sourceUrl === null)];
 }
 
 function normalizeOffer(entry: Record<string, unknown>, index: number): SupplierOffer | null {
@@ -305,7 +318,11 @@ function url(value: unknown): string | null {
   if (!result) return null;
   try {
     const parsed = new URL(result.startsWith('http') ? result : `https://${result}`);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : null;
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    // Una portada («bigmat.es/») no lleva a ningún producto: como enlace de
+    // compra no vale, y colarla como si fuera la ficha engaña al usuario.
+    if (parsed.pathname === '/' && !parsed.search) return null;
+    return parsed.toString();
   } catch {
     return null;
   }

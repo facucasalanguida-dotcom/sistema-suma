@@ -3,6 +3,7 @@ import { demoTypicalUnit, searchDemoCatalog } from '@/lib/demo/catalog';
 import { computeLinePrice } from '@/lib/pricing';
 import { supplierOfferSchema } from '@/lib/types';
 import { SUPPLIER_DIRECTORY } from '@/lib/demo/suppliers';
+import { normalizeOffersResponse, preferLinkedOffers } from '@/lib/gemini/suppliers';
 
 describe('catálogo de demostración', () => {
   it('encuentra porcelánico aunque la consulta lleve tildes y palabras sueltas', () => {
@@ -100,5 +101,66 @@ describe('coherencia con el directorio de proveedores', () => {
         expect(offer.supplier.location).not.toBe('Provincia de Málaga');
       }
     }
+  });
+});
+
+describe('preferencia por ofertas con enlace de compra', () => {
+  function offer(id: string, sourceUrl: string | null) {
+    const base = searchDemoCatalog('cemento', 1)[0];
+    return { ...base, id, sourceUrl };
+  }
+
+  it('descarta las ofertas sin ficha cuando hay al menos dos con enlace', () => {
+    const result = preferLinkedOffers([
+      offer('a', 'https://obramat.es/p/1'),
+      offer('b', null),
+      offer('c', 'https://leroymerlin.es/p/2'),
+    ]);
+    expect(result.map((o) => o.id)).toEqual(['a', 'c']);
+  });
+
+  it('conserva todas si casi ninguna tiene enlace, con las enlazadas primero', () => {
+    const result = preferLinkedOffers([
+      offer('a', null),
+      offer('b', 'https://obramat.es/p/1'),
+      offer('c', null),
+    ]);
+    expect(result.map((o) => o.id)).toEqual(['b', 'a', 'c']);
+  });
+
+  it('no se queda sin resultados cuando ninguna lleva enlace', () => {
+    const result = preferLinkedOffers([offer('a', null), offer('b', null)]);
+    expect(result).toHaveLength(2);
+  });
+});
+
+describe('saneado de URLs de ficha', () => {
+  it('acepta una ficha de producto y rechaza una portada', () => {
+    const parse = (sourceUrl: string) =>
+      normalizeOffersResponse({
+        summary: 's',
+        offers: [
+          {
+            productName: 'Cemento cola C2TE saco 25 kg',
+            supplierName: 'Obramat',
+            supplierLocation: 'Málaga',
+            price: 9.5,
+            saleUnit: 'saco',
+            coverageValue: 5,
+            coverageUnit: 'm2',
+            recommendedWastePct: 0,
+            confidence: 'alta',
+            sourceUrl,
+          },
+        ],
+      }).offers[0]?.sourceUrl ?? null;
+
+    expect(parse('https://www.obramat.es/productos/cemento-cola-10741444.html')).toContain(
+      'cemento-cola',
+    );
+    // Una portada no lleva a ningún producto: no puede pasar por ficha.
+    expect(parse('https://www.obramat.es/')).toBeNull();
+    expect(parse('obramat.es')).toBeNull();
+    expect(parse('no es una url')).toBeNull();
   });
 });

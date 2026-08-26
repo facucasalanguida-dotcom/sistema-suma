@@ -47,6 +47,8 @@ ${directoryForPrompt()}
 QUÉ NECESITO DE TI
 Localiza entre 4 y 8 opciones REALMENTE DISTINTAS, cubriendo toda la horquilla de precio: desde la más económica hasta la de gama alta, pasando por la mejor relación calidad-precio. No repitas el mismo producto del mismo proveedor.
 
+REGLA DE ORO: cada opción debe llevar la URL EXACTA de la ficha del producto en la tienda, la página concreta donde se ve el precio y se puede comprar o encargar. No vale la portada del proveedor ni una página de categoría. Prioriza tiendas con venta online o recogida en tienda (Obramat, Leroy Merlin, Bauhaus, Brico Depot, ManoMano, Isolana y tiendas online especializadas que sirvan en Málaga). Si de un producto no consigues la ficha exacta, sáltalo y busca otro: una opción sin enlace de compra vale menos que una opción menos glamurosa con enlace.
+
 De cada opción anota:
 1. Nombre comercial exacto del producto y marca o fabricante.
 2. Proveedor y municipio de ${searchScope.province} donde se puede comprar o que sirve allí.
@@ -54,7 +56,7 @@ De cada opción anota:
 4. Rendimiento: cuánta superficie, longitud, peso o volumen cubre UNA unidad de venta. Éste es el dato más importante para presupuestar: por ejemplo, cuántos m² trae una caja, cuántos kg trae un saco y cuántos m² cubre ese saco, cuántos metros mide una barra.
 5. Ficha técnica: formato, espesor, acabado, resistencia, clase, uso recomendado.
 6. Disponibilidad y plazo de entrega en ${searchScope.province}.
-7. La URL de donde sale el precio.
+7. La URL exacta de la ficha del producto (cópiala completa, tal y como aparece; nunca la reconstruyas de memoria).
 
 Si para alguna opción no encuentras precio publicado, indícalo explícitamente y da un precio de mercado orientativo, dejando claro que es una estimación del sector y no una tarifa consultada.
 
@@ -73,6 +75,7 @@ ${findings}
 
 INSTRUCCIONES
 - Conserva únicamente información presente en el informe. No añadas proveedores ni productos que no aparezcan.
+- \`sourceUrl\` es la URL de la ficha del producto que cita el informe, copiada literalmente. Si el informe no da la ficha exacta de una opción, deja \`sourceUrl\` vacío: jamás inventes ni "completes" una URL.
 - \`price\` es el precio de UNA unidad de venta. \`saleUnit\` debe ser una de: ${SALE_UNITS.join(', ')}.
 - \`coverageValue\` y \`coverageUnit\` expresan cuánta magnitud medible rinde UNA unidad de venta:
   · Si el precio ya es por m², por metro, por kg, por m³ o por unidad → coverageValue = 1 y coverageUnit coincide con saleUnit.
@@ -96,7 +99,7 @@ ${materialDescription}
 DISTRIBUIDORES CON PRESENCIA CONTRASTADA EN ${searchScope.province.toUpperCase()}
 ${directoryForPrompt()}
 
-Usa exclusivamente distribuidores reales de la lista anterior o cadenas nacionales que sirvan en ${searchScope.province}. Cubre toda la horquilla de precio. Marca TODAS las ofertas con \`confidence\` = "estimada" y deja \`sourceUrl\` vacío, porque no has consultado ninguna fuente. En \`summary\` advierte al usuario de que son precios de mercado orientativos que conviene confirmar con el proveedor.`;
+Usa exclusivamente distribuidores reales de la lista anterior o cadenas nacionales que sirvan en ${searchScope.province}. Cubre toda la horquilla de precio. Marca TODAS las ofertas con \`confidence\` = "estimada" y deja \`sourceUrl\` vacío, porque no has consultado ninguna fuente y una URL de memoria suele estar rota o inventada. En \`summary\` advierte al usuario de que son precios de mercado orientativos que conviene confirmar con el proveedor.`;
 }
 
 /** Pasos 5-6: interpretación de la cantidad indicada por el usuario. */

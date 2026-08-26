@@ -7,6 +7,7 @@ import {
   ExternalLink,
   MapPin,
   Plus,
+  ShoppingCart,
   Store,
   Truck,
 } from 'lucide-react';
@@ -46,6 +47,15 @@ interface OfferCardProps {
   /** `true` si esta oferta ya está en el presupuesto. */
   alreadyInBudget?: boolean;
   cheapest?: boolean;
+}
+
+/** «obramat.es», sin «www.» ni ruta: suficiente para saber a dónde se va. */
+function hostLabel(sourceUrl: string): string {
+  try {
+    return new URL(sourceUrl).hostname.replace(/^www\./, '');
+  } catch {
+    return 'la tienda';
+  }
 }
 
 export function OfferCard({
@@ -177,45 +187,55 @@ export function OfferCard({
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between gap-2 border-t border-suma-border px-4 py-3">
+      <div className="flex flex-col gap-2 border-t border-suma-border px-4 py-3">
         {offer.sourceUrl ? (
           <a
             href={offer.sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-suma-muted hover:underline"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-suma-high text-[13px] font-semibold text-suma-ink ring-1 ring-suma-border transition-colors ring-inset hover:text-suma-red-bright hover:ring-suma-red"
+            title={offer.sourceUrl}
           >
+            <ShoppingCart className="size-3.5" aria-hidden />
+            Ver producto en {hostLabel(offer.sourceUrl)}
             <ExternalLink className="size-3" aria-hidden />
-            Ver fuente
-          </a>
-        ) : offer.supplier.website ? (
-          <a
-            href={`https://${offer.supplier.website.replace(/^https?:\/\//, '')}`}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-suma-muted hover:underline"
-          >
-            <ExternalLink className="size-3" aria-hidden />
-            {offer.supplier.website}
           </a>
         ) : (
-          <span className="text-[11px] text-suma-muted">{offer.availability ?? ''}</span>
+          <p className="flex items-center gap-1.5 text-[11px] text-suma-faint">
+            <CircleAlert className="size-3 shrink-0" aria-hidden />
+            Sin ficha enlazada: confirma precio y disponibilidad con {offer.supplier.name}
+            {offer.supplier.website ? (
+              <a
+                href={`https://${offer.supplier.website.replace(/^https?:\/\//, '')}`}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="font-medium text-suma-muted underline underline-offset-2 hover:text-suma-ink"
+              >
+                {offer.supplier.website}
+              </a>
+            ) : null}
+          </p>
         )}
 
-        <Button
-          size="sm"
-          variant={cheapest ? 'primary' : 'neutral'}
-          icon={<Plus className="size-3.5" aria-hidden />}
-          onClick={() => onAdd(offer)}
-          disabled={disabled}
-          title={
-            disabled
-              ? 'Termina de indicar la cantidad de la partida anterior'
-              : 'Añadir esta opción al presupuesto'
-          }
-        >
-          {alreadyInBudget ? 'Añadir otra vez' : 'Agregar al presupuesto'}
-        </Button>
+        <div className="flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-[11px] text-suma-faint">
+            {offer.availability ?? ''}
+          </span>
+          <Button
+            size="sm"
+            variant={cheapest ? 'primary' : 'neutral'}
+            icon={<Plus className="size-3.5" aria-hidden />}
+            onClick={() => onAdd(offer)}
+            disabled={disabled}
+            title={
+              disabled
+                ? 'Termina de indicar la cantidad de la partida anterior'
+                : 'Añadir esta opción al presupuesto'
+            }
+          >
+            {alreadyInBudget ? 'Añadir otra vez' : 'Agregar al presupuesto'}
+          </Button>
+        </div>
       </div>
     </article>
   );

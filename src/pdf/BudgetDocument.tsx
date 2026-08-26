@@ -372,6 +372,9 @@ export function BudgetDocument({ data }: BudgetDocumentProps) {
                   {offer.supplier.website ? ` · ${pdfText(offer.supplier.website)}` : ''}
                 </Text>
                 {specs ? <Text style={styles.productMeta}>{specs}</Text> : null}
+                {offer.sourceUrl ? (
+                  <Text style={styles.productMeta}>Ficha: {pdfText(offer.sourceUrl)}</Text>
+                ) : null}
                 <Text style={styles.productCalc}>
                   Medición solicitada: {formatPrecise(breakdown.requested.value)}{' '}
                   {measureLabel(breakdown.requested.unit)}

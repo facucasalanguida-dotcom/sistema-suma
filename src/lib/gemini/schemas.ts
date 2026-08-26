@@ -173,7 +173,8 @@ export const offersResponseSchema: Schema = {
           },
           sourceUrl: {
             type: Type.STRING,
-            description: 'URL de la ficha o tarifa consultada. Vacío si no procede de una fuente.',
+            description:
+              'URL completa de la ficha del producto en la tienda, copiada literalmente del informe. Vacío si el informe no la da. Nunca una portada, una categoría ni una URL reconstruida.',
           },
           confidence: {
             type: Type.STRING,

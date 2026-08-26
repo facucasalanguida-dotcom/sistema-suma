@@ -81,6 +81,25 @@ src/
   proxy.ts          Puerta de acceso opcional por contraseña compartida
 ```
 
+### Enlaces de compra
+
+Cada opción debe llevar la URL de la ficha del producto en la tienda, para
+comprarlo directamente desde el resultado. Eso se impone en tres capas:
+
+1. **El prompt de búsqueda** exige la ficha exacta de cada opción y ordena
+   descartar productos de los que no se consiga, priorizando tiendas con venta
+   online que sirven en Málaga (Obramat, Leroy Merlin, Bauhaus, ManoMano…).
+2. **La normalización** rechaza como ficha cualquier portada («bigmat.es/») y,
+   si hay al menos dos opciones con enlace, descarta las que no lo tienen; si
+   casi ninguna lo trae, las conserva señalizadas antes que dejar al usuario
+   sin resultados (`preferLinkedOffers`).
+3. **La interfaz** muestra el enlace como acción de la tarjeta —«Ver producto
+   en obramat.es»— y el PDF imprime la ficha de cada partida.
+
+El catálogo de demostración lleva también fichas reales localizadas por
+búsqueda con verificación cruzada. Los catálogos de las tiendas cambian: si un
+enlace muere, se actualiza en `src/lib/demo/catalog.ts`.
+
 ### Por qué la búsqueda son dos llamadas
 
 La API de Gemini no admite anclaje en Google Search y salida JSON estructurada

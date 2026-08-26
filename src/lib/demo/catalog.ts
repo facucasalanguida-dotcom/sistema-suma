@@ -23,6 +23,12 @@ interface DemoVariant {
   delivery: string;
   highlight: string;
   confidence: PriceConfidence;
+  /**
+   * Ficha del producto en la tienda, para comprarlo directamente. Los enlaces
+   * proceden de una investigación con verificación cruzada; los catálogos
+   * cambian, así que si uno se rompe basta con actualizarlo aquí.
+   */
+  sourceUrl?: string;
 }
 
 interface DemoProduct {
@@ -819,7 +825,7 @@ export function searchDemoCatalog(query: string, limit = 6): SupplierOffer[] {
         specs: variant.specs,
         availability: variant.availability,
         delivery: variant.delivery,
-        sourceUrl: null,
+        sourceUrl: variant.sourceUrl ?? null,
         confidence: variant.confidence,
         highlight: variant.highlight,
         group: product.id,
