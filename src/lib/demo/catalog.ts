@@ -353,7 +353,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
         supplier: 'BigMat',
         productName: 'Ladrillo cerámico perforado 24 × 11,5 × 7 cm',
         brand: 'Cerámica local',
-        price: 0.24,
+        price: 0.19,
         saleUnit: 'ud',
         coverage: { value: 1, unit: 'ud', note: 'precio por unidad' },
         specs: [
@@ -494,7 +494,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
         supplier: 'BigMat',
         productName: 'Barra de acero corrugado B500S Ø12 mm, barra de 6 m',
         brand: 'Siderúrgica nacional',
-        price: 5.2,
+        price: 4.8,
         saleUnit: 'barra',
         coverage: { value: 6, unit: 'm', note: 'barra de 6 m de longitud' },
         specs: [
@@ -641,7 +641,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
         supplier: 'Onulec',
         productName: 'Cable unipolar H07Z1-K 2,5 mm² libre de halógenos, rollo de 100 m',
         brand: 'Top Cable',
-        price: 44,
+        price: 34,
         saleUnit: 'rollo',
         coverage: { value: 100, unit: 'm', note: 'rollo de 100 m' },
         specs: [
@@ -659,7 +659,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
         supplier: 'Obramat Málaga',
         productName: 'Cable H07V-K 2,5 mm², rollo de 100 m',
         brand: 'Marca propia',
-        price: 32,
+        price: 25,
         saleUnit: 'rollo',
         coverage: { value: 100, unit: 'm', note: 'rollo de 100 m' },
         specs: [

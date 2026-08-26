@@ -92,7 +92,7 @@ export const SUPPLIER_DIRECTORY: DirectorySupplier[] = [
   },
   {
     name: 'Leroy Merlin',
-    location: 'Málaga capital, Marbella y Fuengirola',
+    location: 'Málaga capital, Marbella y Mijas',
     website: 'leroymerlin.es',
     phone: null,
     specialties: ['bricolaje y reforma', 'pintura', 'cerámica', 'fontanería', 'ferretería'],
