@@ -19,7 +19,7 @@ import { cn } from '@/lib/cn';
 
 const CONFIDENCE: Record<
   SupplierOffer['confidence'],
-  { tone: 'success' | 'primary' | 'warning'; label: string; title: string }
+  { tone: 'success' | 'brand' | 'warning'; label: string; title: string }
 > = {
   alta: {
     tone: 'success',
@@ -27,7 +27,7 @@ const CONFIDENCE: Record<
     title: 'Procede de una tarifa o ficha de producto consultada.',
   },
   media: {
-    tone: 'primary',
+    tone: 'brand',
     label: 'Precio de catálogo',
     title: 'Procede de un catálogo general, puede variar según el pedido.',
   },
@@ -73,8 +73,8 @@ export function OfferCard({
   return (
     <article
       className={cn(
-        'flex flex-col rounded-xl border bg-white transition-shadow hover:shadow-md',
-        cheapest ? 'border-suma-accent-soft ring-1 ring-suma-accent-soft/60' : 'border-suma-border',
+        'flex flex-col rounded-xl border bg-suma-raised transition-shadow hover:shadow-md',
+        cheapest ? 'border-suma-red/45 ring-1 ring-suma-red/40' : 'border-suma-border',
       )}
     >
       <div className="flex flex-1 flex-col gap-3 p-4">
@@ -89,7 +89,7 @@ export function OfferCard({
           </div>
 
           <div className="shrink-0 text-right">
-            <p className="text-lg leading-none font-bold text-suma-primary tabular-nums">
+            <p className="text-lg leading-none font-bold text-suma-ink tabular-nums">
               {formatCurrency(offer.price)}
             </p>
             <p className="mt-1 text-[11px] text-suma-muted">
@@ -100,13 +100,13 @@ export function OfferCard({
         </div>
 
         {showNormalized ? (
-          <p className="-mt-1 text-right text-[11px] font-medium text-suma-accent tabular-nums">
+          <p className="-mt-1 text-right text-[11px] font-medium text-suma-red tabular-nums">
             ≈ {formatCurrency(normalizedPrice)} / {coverageLabel}
           </p>
         ) : null}
 
         <div className="flex flex-wrap items-center gap-1.5">
-          {cheapest ? <Badge tone="accent">Más económica</Badge> : null}
+          {cheapest ? <Badge tone="brand">Más económica</Badge> : null}
           <Badge tone={confidence.tone}>
             <span title={confidence.title}>{confidence.label}</span>
           </Badge>
@@ -117,23 +117,23 @@ export function OfferCard({
 
         <dl className="flex flex-col gap-1.5 text-xs text-suma-muted">
           <div className="flex items-start gap-1.5">
-            <Store className="mt-0.5 size-3.5 shrink-0 text-suma-primary-soft" aria-hidden />
+            <Store className="mt-0.5 size-3.5 shrink-0 text-suma-muted" aria-hidden />
             <dd className="font-medium text-suma-ink">{offer.supplier.name}</dd>
           </div>
           <div className="flex items-start gap-1.5">
-            <MapPin className="mt-0.5 size-3.5 shrink-0 text-suma-primary-soft" aria-hidden />
+            <MapPin className="mt-0.5 size-3.5 shrink-0 text-suma-muted" aria-hidden />
             <dd>{offer.supplier.location}</dd>
           </div>
           {offer.delivery ? (
             <div className="flex items-start gap-1.5">
-              <Truck className="mt-0.5 size-3.5 shrink-0 text-suma-primary-soft" aria-hidden />
+              <Truck className="mt-0.5 size-3.5 shrink-0 text-suma-muted" aria-hidden />
               <dd>{offer.delivery}</dd>
             </div>
           ) : null}
         </dl>
 
-        <div className="rounded-lg bg-suma-primary-tint/60 px-3 py-2">
-          <p className="text-[11px] leading-relaxed text-suma-primary-soft">
+        <div className="rounded-lg bg-suma-high px-3 py-2">
+          <p className="text-[11px] leading-relaxed text-suma-muted">
             <span className="font-semibold">Rendimiento:</span> 1 {saleLabel} ={' '}
             {formatPrecise(offer.coverage.value)} {coverageLabel}
             {offer.coverage.note ? ` · ${offer.coverage.note}` : ''}
@@ -155,7 +155,7 @@ export function OfferCard({
               <button
                 type="button"
                 onClick={() => setExpanded((value) => !value)}
-                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-suma-primary-soft hover:text-suma-primary"
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-suma-muted hover:text-suma-ink"
               >
                 <ChevronDown
                   className={cn('size-3 transition-transform', expanded && 'rotate-180')}
@@ -171,7 +171,7 @@ export function OfferCard({
 
         {offer.highlight ? (
           <p className="flex items-start gap-1.5 text-[11px] text-suma-muted italic">
-            <CircleAlert className="mt-0.5 size-3 shrink-0 text-suma-accent" aria-hidden />
+            <CircleAlert className="mt-0.5 size-3 shrink-0 text-suma-faint" aria-hidden />
             {offer.highlight}
           </p>
         ) : null}
@@ -183,7 +183,7 @@ export function OfferCard({
             href={offer.sourceUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-suma-primary-soft hover:underline"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-suma-muted hover:underline"
           >
             <ExternalLink className="size-3" aria-hidden />
             Ver fuente
@@ -193,7 +193,7 @@ export function OfferCard({
             href={`https://${offer.supplier.website.replace(/^https?:\/\//, '')}`}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-suma-primary-soft hover:underline"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-suma-muted hover:underline"
           >
             <ExternalLink className="size-3" aria-hidden />
             {offer.supplier.website}
@@ -204,7 +204,7 @@ export function OfferCard({
 
         <Button
           size="sm"
-          variant={cheapest ? 'accent' : 'primary'}
+          variant={cheapest ? 'primary' : 'neutral'}
           icon={<Plus className="size-3.5" aria-hidden />}
           onClick={() => onAdd(offer)}
           disabled={disabled}

@@ -72,12 +72,12 @@ export function ChatPanel({
         {status !== 'idle' ? (
           <div className="suma-rise flex items-center gap-3">
             <Avatar />
-            <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm border border-suma-border bg-white px-4 py-3">
+            <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm border border-suma-border bg-suma-raised px-4 py-3">
               <span className="flex gap-1" aria-hidden>
                 {[0, 1, 2].map((index) => (
                   <span
                     key={index}
-                    className="suma-dot size-1.5 rounded-full bg-suma-accent"
+                    className="suma-dot size-1.5 rounded-full bg-suma-red"
                     style={{ animationDelay: `${index * 0.16}s` }}
                   />
                 ))}
@@ -93,10 +93,17 @@ export function ChatPanel({
   );
 }
 
+/**
+ * El «+» de la marca en una caja oscura, como la insignia circular de SUMA.
+ * Suelto y a tamaño completo dominaba cada mensaje del chat.
+ */
 function Avatar() {
   return (
-    <span className="mt-0.5 shrink-0" aria-hidden>
-      <SumaLogo size={28} markOnly />
+    <span
+      className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-suma-high ring-1 ring-inset ring-suma-border"
+      aria-hidden
+    >
+      <SumaLogo size={11} markOnly />
     </span>
   );
 }
@@ -123,7 +130,7 @@ function Message({
   if (message.role === 'user') {
     return (
       <div className="suma-rise flex flex-col items-end gap-1">
-        <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-suma-primary px-4 py-3 text-sm text-white">
+        <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-suma-surface px-4 py-3 text-sm text-white">
           {message.imageDataUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -144,12 +151,12 @@ function Message({
       <Avatar />
       <div className="min-w-0 flex-1">
         {message.kind === 'error' ? (
-          <div className="flex items-start gap-2 rounded-2xl rounded-tl-sm border border-red-200 bg-red-50 px-4 py-3">
+          <div className="flex items-start gap-2 rounded-2xl rounded-tl-sm border border-suma-danger/35 bg-suma-red-tint px-4 py-3">
             <CircleAlert className="mt-0.5 size-4 shrink-0 text-suma-danger" aria-hidden />
             <p className="text-sm text-suma-danger">{message.text}</p>
           </div>
         ) : (
-          <div className="rounded-2xl rounded-tl-sm border border-suma-border bg-white px-4 py-3">
+          <div className="rounded-2xl rounded-tl-sm border border-suma-border bg-suma-raised px-4 py-3">
             <p className="text-sm leading-relaxed whitespace-pre-wrap text-suma-ink">
               {message.text}
             </p>
@@ -164,7 +171,7 @@ function Message({
             ) : null}
 
             {message.kind === 'line-added' ? (
-              <div className="mt-3 flex items-start gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <div className="mt-3 flex items-start gap-2 rounded-lg border border-suma-success/30 bg-suma-success/10 px-3 py-2.5">
                 <CircleCheck className="mt-0.5 size-4 shrink-0 text-suma-success" aria-hidden />
                 <div className="min-w-0 text-xs">
                   <p className="font-semibold text-suma-ink">
@@ -228,10 +235,10 @@ function ProcessHint() {
       {steps.map((step, index) => (
         <li
           key={step.title}
-          className="rounded-xl border border-suma-border bg-white/70 px-4 py-3.5"
+          className="rounded-xl border border-suma-border bg-suma-high/60 px-4 py-3.5"
         >
-          <div className="flex items-center gap-2 text-suma-primary-soft">
-            <span className="flex size-6 items-center justify-center rounded-md bg-suma-primary-tint text-[11px] font-bold">
+          <div className="flex items-center gap-2 text-suma-muted">
+            <span className="flex size-6 items-center justify-center rounded-md bg-suma-high text-[11px] font-bold">
               {index + 1}
             </span>
             {step.icon}
@@ -260,7 +267,7 @@ function ResultsBlock({
   return (
     <div className="mt-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <Badge tone="primary" icon={<Sparkles className="size-3" aria-hidden />}>
+        <Badge tone="brand" icon={<Sparkles className="size-3" aria-hidden />}>
           {message.offers.length}{' '}
           {message.offers.length === 1 ? 'opción encontrada' : 'opciones encontradas'}
         </Badge>
@@ -282,8 +289,8 @@ function ResultsBlock({
       </div>
 
       {message.sources.length > 0 ? (
-        <details className="mt-3 rounded-lg border border-suma-border bg-suma-surface px-3 py-2">
-          <summary className="cursor-pointer text-xs font-semibold text-suma-primary-soft">
+        <details className="mt-3 rounded-lg border border-suma-border bg-suma-canvas px-3 py-2">
+          <summary className="cursor-pointer text-xs font-semibold text-suma-muted">
             <Globe className="mr-1 inline size-3" aria-hidden />
             Fuentes consultadas ({message.sources.length})
           </summary>
@@ -294,7 +301,7 @@ function ResultsBlock({
                   href={source.url}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-[11px] text-suma-primary-soft hover:underline"
+                  className="text-[11px] text-suma-muted hover:underline"
                 >
                   {source.title}
                 </a>

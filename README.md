@@ -90,24 +90,30 @@ conservar las fuentes citadas y enseñárselas al usuario.
 
 ## Identidad de marca
 
-Todo lo visual sale de dos archivos que hay que mantener sincronizados:
+La identidad es la de gruposuma.eu: fondo casi negro, rojo corporativo y texto
+blanco. Todo sale de dos archivos que hay que mantener sincronizados:
 
-- `src/lib/brand.ts` — colores, datos del emisor, eslogan. Lo lee el PDF.
-- `src/app/globals.css` — los mismos colores como variables `--color-suma-*`.
-  Los lee la interfaz.
+- `src/lib/brand.ts` — la paleta de pantalla (`brandColors`), la del documento
+  impreso (`printColors`) y los datos del emisor.
+- `src/app/globals.css` — los mismos colores de pantalla como variables
+  `--color-suma-*`, que es lo que consumen las clases de Tailwind.
 
-El logotipo es vectorial y está duplicado a propósito en dos formatos, con la
-misma geometría: `src/components/brand/SumaLogo.tsx` (web) y `src/pdf/logo.tsx`
-(PDF). Se construye sobre un signo «+», que es lo que significa el nombre.
+El logotipo es el wordmark oficial —«GRUPO» girado en vertical, «SUMA» en
+versales gruesas y el signo «+» en rojo— y está duplicado a propósito en dos
+implementaciones con la misma geometría: `src/components/brand/SumaLogo.tsx`
+para la web y `src/pdf/logo.tsx` para el documento. El «+» se dibuja con dos
+barras en lugar de escribirse como carácter, para que su grosor no dependa de
+la tipografía disponible.
 
-> **Aviso sobre los colores.** No fue posible acceder a `gruposuma.eu` desde el
-> entorno de desarrollo, así que la paleta actual es una interpretación
-> corporativa, no una captura del manual de marca. Sustituir los seis primeros
-> valores de `brandColors` y sus equivalentes en `globals.css` deja el sistema
-> ajustado a la identidad oficial; nada más depende de ellos.
+**El PDF es la excepción al fondo oscuro.** Un presupuesto se imprime, se firma
+y se archiva: en negro gastaría tóner, se leería peor en papel y no es lo que
+espera recibir un cliente. Así que el cuerpo va en blanco y la marca entra por
+las bandas —cabecera a sangre, cabecera de tabla, bloque de total y filetes—,
+en el negro y el rojo corporativos. Esa paleta impresa vive en `printColors`.
 
-El PDF usa Helvetica, una de las tipografías estándar del formato, para no
-depender de ningún archivo externo. Como sólo codifica el juego WinAnsi,
+El documento usa las tipografías estándar del formato PDF: Helvetica para el
+texto y Times para los titulares, que hace eco de la tipografía con remate de
+los títulos de la web. Como Helvetica sólo codifica el juego WinAnsi,
 `src/pdf/text.ts` sanea todo el texto dinámico: una lambda de una ficha técnica
 saldría como otro glifo cualquiera y dejaría una errata delante del cliente.
 Para usar la tipografía corporativa basta con registrarla con `Font.register`.

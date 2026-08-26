@@ -1,14 +1,13 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
 
-type Tone = 'neutral' | 'primary' | 'accent' | 'success' | 'warning';
+type Tone = 'neutral' | 'brand' | 'success' | 'warning';
 
 const TONES: Record<Tone, string> = {
-  neutral: 'bg-slate-100 text-suma-muted ring-slate-200',
-  primary: 'bg-suma-primary-tint text-suma-primary-soft ring-suma-primary-tint',
-  accent: 'bg-suma-accent-tint text-suma-warning ring-suma-accent-soft/50',
-  success: 'bg-emerald-50 text-suma-success ring-emerald-200',
-  warning: 'bg-amber-50 text-suma-warning ring-amber-200',
+  neutral: 'bg-suma-high text-suma-muted ring-suma-border',
+  brand: 'bg-suma-red-tint text-suma-red-bright ring-suma-red/40',
+  success: 'bg-suma-success/12 text-suma-success ring-suma-success/30',
+  warning: 'bg-suma-warning/12 text-suma-warning ring-suma-warning/30',
 };
 
 export function Badge({

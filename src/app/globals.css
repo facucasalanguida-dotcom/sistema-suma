@@ -1,33 +1,51 @@
 @import "tailwindcss";
 
 /**
- * Identidad visual de SUMA.
+ * Identidad visual de GRUPO SUMA.
  *
- * Los valores deben coincidir con `src/lib/brand.ts`, que es la fuente de la
- * que bebe el PDF. Si se cambia la paleta corporativa, hay que tocar los dos
- * archivos para que la web y el documento sigan siendo el mismo sistema.
+ * Los valores deben coincidir con `brandColors` en `src/lib/brand.ts`, que es
+ * de donde bebe el PDF. Si se cambia la paleta corporativa hay que tocar los
+ * dos archivos para que la web y el documento sigan siendo el mismo sistema.
+ *
+ * La marca es oscura: fondo casi negro, rojo corporativo y texto blanco, como
+ * gruposuma.eu. El PDF es la excepción y va sobre papel blanco, con la marca
+ * puesta en las bandas (ver `printColors`).
  */
 @theme {
-  --color-suma-primary: #0e2a47;
-  --color-suma-primary-soft: #1b4571;
-  --color-suma-primary-tint: #e8eff7;
-  --color-suma-accent: #f07c00;
-  --color-suma-accent-soft: #ffb25c;
-  --color-suma-accent-tint: #fff2e2;
-  --color-suma-success: #137a4d;
-  --color-suma-warning: #b45309;
-  --color-suma-danger: #b42318;
-  --color-suma-ink: #101828;
-  --color-suma-muted: #5a6478;
-  --color-suma-border: #dce3ec;
-  --color-suma-surface: #f6f8fb;
-  --color-suma-raised: #ffffff;
+  --color-suma-red: #e1252c;
+  --color-suma-red-bright: #ff4b52;
+  --color-suma-red-deep: #a4161c;
+  --color-suma-red-tint: #2b1216;
+
+  --color-suma-canvas: #0b0b0f;
+  --color-suma-surface: #131419;
+  --color-suma-raised: #1b1c22;
+  --color-suma-high: #24252c;
+
+  --color-suma-border: #2f3037;
+  --color-suma-border-soft: #212228;
+
+  --color-suma-ink: #f4f4f6;
+  --color-suma-muted: #a3a5ae;
+  --color-suma-faint: #6c6e77;
+
+  --color-suma-success: #3cc98d;
+  --color-suma-warning: #f2a93b;
+  --color-suma-danger: #ff5c61;
 
   --font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
     "Noto Sans", sans-serif;
+  /* Eco del titular de la web, que va en tipografía con remate. */
+  --font-display: Georgia, "Times New Roman", "Nimbus Roman", serif;
 
   --radius-card: 0.75rem;
+}
+
+:root {
+  /* Hace que los controles nativos —selectores, barras, calendarios— se
+     pinten en oscuro en lugar de en el blanco por defecto del sistema. */
+  color-scheme: dark;
 }
 
 html {
@@ -35,10 +53,19 @@ html {
 }
 
 body {
-  background-color: var(--color-suma-surface);
+  background-color: var(--color-suma-canvas);
   color: var(--color-suma-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: var(--color-suma-red);
+  color: #ffffff;
+}
+
+::placeholder {
+  color: var(--color-suma-faint);
 }
 
 /* Barras de desplazamiento discretas dentro de los paneles. */
@@ -111,10 +138,4 @@ input[type="number"]::-webkit-inner-spin-button {
 
 input[type="number"] {
   -moz-appearance: textfield;
-}
-
-@media print {
-  body {
-    background: #fff;
-  }
 }

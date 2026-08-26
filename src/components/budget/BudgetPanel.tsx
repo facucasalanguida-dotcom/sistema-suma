@@ -38,26 +38,27 @@ export function BudgetPanel({
   return (
     <aside
       className={cn(
-        'flex min-h-0 flex-col border-suma-border bg-white',
+        'flex min-h-0 flex-col border-suma-border bg-suma-raised',
         className,
       )}
       aria-label="Presupuesto en curso"
     >
       <header className="flex items-center justify-between gap-2 border-b border-suma-border px-4 py-3.5">
         <div className="flex items-center gap-2">
-          <Package className="size-4 text-suma-primary-soft" aria-hidden />
-          <h2 className="text-sm font-bold tracking-wide text-suma-primary uppercase">
+          <Package className="size-4 text-suma-muted" aria-hidden />
+          <h2 className="text-sm font-bold tracking-wide text-suma-red uppercase">
             Presupuesto
           </h2>
-          <Badge tone={lines.length > 0 ? 'accent' : 'neutral'}>
+          <Badge tone={lines.length > 0 ? 'brand' : 'neutral'}>
             {lines.length} {lines.length === 1 ? 'partida' : 'partidas'}
           </Badge>
         </div>
 
         {lines.length > 0 ? (
           <Button
-            variant="danger"
+            variant="ghost"
             size="sm"
+            className="hover:bg-suma-red-tint hover:text-suma-danger"
             onClick={onClear}
             icon={<Trash2 className="size-3.5" aria-hidden />}
           >
@@ -70,7 +71,7 @@ export function BudgetPanel({
         {lines.length === 0 ? (
           <EmptyState />
         ) : (
-          <ol className="divide-y divide-suma-border">
+          <ol className="divide-y divide-suma-border-soft">
             {lines.map((line, index) => (
               <BudgetLineRow key={line.id} line={line} index={index} onRemove={onRemove} />
             ))}
@@ -78,7 +79,7 @@ export function BudgetPanel({
         )}
       </div>
 
-      <footer className="border-t border-suma-border bg-suma-surface px-4 py-4">
+      <footer className="border-t border-suma-border bg-suma-canvas px-4 py-4">
         <dl className="flex flex-col gap-1.5 text-sm">
           <Row label="Suma de partidas" value={formatCurrency(totals.subtotal)} />
           {totals.discountPct > 0 ? (
@@ -94,9 +95,9 @@ export function BudgetPanel({
           />
         </dl>
 
-        <div className="mt-3 flex items-baseline justify-between rounded-lg bg-suma-primary px-3 py-2.5">
-          <span className="text-xs font-bold tracking-wide text-white/80 uppercase">Total</span>
-          <span className="text-xl font-bold text-white tabular-nums">
+        <div className="mt-3 flex items-baseline justify-between rounded-r-lg border-l-4 border-suma-red bg-suma-high px-3 py-2.5">
+          <span className="text-xs font-bold tracking-wide text-suma-muted uppercase">Total</span>
+          <span className="text-xl font-bold text-suma-ink tabular-nums">
             {formatCurrency(totals.total)}
           </span>
         </div>
@@ -109,7 +110,7 @@ export function BudgetPanel({
         ) : null}
 
         <Button
-          variant="accent"
+          variant="primary"
           size="lg"
           className="mt-3 w-full"
           disabled={lines.length === 0}
@@ -160,7 +161,7 @@ function BudgetLineRow({
   return (
     <li className="group px-4 py-3">
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-suma-primary-tint text-[11px] font-bold text-suma-primary-soft tabular-nums">
+        <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded bg-suma-high text-[11px] font-bold text-suma-muted tabular-nums">
           {index + 1}
         </span>
 
@@ -179,7 +180,7 @@ function BudgetLineRow({
             </span>
             <span aria-hidden>×</span>
             <span className="tabular-nums">{formatCurrency(breakdown.unitPrice)}</span>
-            <span className="ml-auto text-sm font-bold text-suma-primary tabular-nums">
+            <span className="ml-auto text-sm font-bold text-suma-ink tabular-nums">
               {formatCurrency(breakdown.lineTotal)}
             </span>
           </div>
@@ -187,17 +188,17 @@ function BudgetLineRow({
           <button
             type="button"
             onClick={() => setShowDetail((value) => !value)}
-            className="mt-1 text-[11px] font-medium text-suma-primary-soft hover:underline"
+            className="mt-1 text-[11px] font-medium text-suma-muted hover:underline"
             aria-expanded={showDetail}
           >
             {showDetail ? 'Ocultar cálculo' : 'Ver cómo se ha calculado'}
           </button>
 
           {showDetail ? (
-            <p className="mt-1.5 rounded-md bg-suma-surface px-2.5 py-2 text-[11px] leading-relaxed text-suma-muted">
+            <p className="mt-1.5 rounded-md bg-suma-canvas px-2.5 py-2 text-[11px] leading-relaxed text-suma-muted">
               {breakdown.explanation}
               <br />
-              <span className="text-suma-primary-soft">
+              <span className="text-suma-muted">
                 Medición solicitada: {formatPrecise(breakdown.requested.value)}{' '}
                 {measureLabel(breakdown.requested.unit)}
               </span>
@@ -208,7 +209,7 @@ function BudgetLineRow({
         <button
           type="button"
           onClick={() => onRemove(line.id)}
-          className="rounded-md p-1 text-suma-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-suma-danger focus-visible:opacity-100"
+          className="rounded-md p-1 text-suma-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-suma-red-tint hover:text-suma-danger focus-visible:opacity-100"
           aria-label={`Quitar «${offer.productName}» del presupuesto`}
         >
           <Trash2 className="size-3.5" aria-hidden />

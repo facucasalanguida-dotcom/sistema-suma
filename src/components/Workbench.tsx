@@ -81,7 +81,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
 
   return (
     <div className="flex h-dvh flex-col">
-      <header className="z-20 flex shrink-0 items-center justify-between gap-3 border-b border-suma-border bg-white px-4 py-3 sm:px-6">
+      <header className="z-20 flex shrink-0 items-center justify-between gap-3 border-b border-suma-border bg-suma-raised px-4 py-3 sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <SumaLogo size={32} />
           <div className="hidden min-w-0 border-l border-suma-border pl-3 sm:block">
@@ -115,7 +115,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
       </header>
 
       {!aiEnabled ? (
-        <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-suma-warning sm:px-6">
+        <div className="shrink-0 border-b border-suma-warning/30 bg-suma-warning/10 px-4 py-2 text-center text-xs text-suma-warning sm:px-6">
           Sin clave de Gemini: precios orientativos de un catálogo local.
           <span className="hidden sm:inline">
             {' '}
@@ -165,7 +165,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
           />
         ) : (
           <div
-            className="hidden w-96 shrink-0 border-l border-suma-border bg-white lg:block"
+            className="hidden w-96 shrink-0 border-l border-suma-border bg-suma-raised lg:block"
             aria-hidden
           />
         )}
@@ -176,7 +176,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
         <button
           type="button"
           onClick={() => setBudgetSheetOpen(true)}
-          className="flex shrink-0 items-center justify-between gap-3 border-t border-suma-border bg-suma-primary px-4 py-3 text-white lg:hidden"
+          className="flex shrink-0 items-center justify-between gap-3 border-t-2 border-suma-red bg-suma-surface px-4 py-3 text-suma-ink lg:hidden"
         >
           <span className="flex items-center gap-2 text-sm font-semibold">
             <ClipboardList className="size-4" aria-hidden />
@@ -188,16 +188,16 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
 
       {budgetSheetOpen ? (
         <div
-          className="fixed inset-0 z-40 flex flex-col justify-end bg-suma-ink/40 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 flex flex-col justify-end bg-black/70 backdrop-blur-sm lg:hidden"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setBudgetSheetOpen(false);
           }}
         >
-          <div className="relative flex max-h-[85dvh] flex-col rounded-t-2xl bg-white">
+          <div className="relative flex max-h-[85dvh] flex-col rounded-t-2xl bg-suma-raised">
             <button
               type="button"
               onClick={() => setBudgetSheetOpen(false)}
-              className="absolute top-3 right-3 z-10 rounded-md p-1.5 text-suma-muted hover:bg-suma-surface"
+              className="absolute top-3 right-3 z-10 rounded-md p-1.5 text-suma-muted hover:bg-suma-canvas"
               aria-label="Cerrar el presupuesto"
             >
               <X className="size-4" aria-hidden />

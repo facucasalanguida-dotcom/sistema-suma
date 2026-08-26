@@ -138,8 +138,8 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
       onDragLeave={() => setDragging(false)}
       onDrop={handleDrop}
       className={cn(
-        'border-t border-suma-border bg-white px-4 py-3 transition-colors sm:px-6',
-        dragging && 'bg-suma-accent-tint/60',
+        'border-t border-suma-border bg-suma-raised px-4 py-3 transition-colors sm:px-6',
+        dragging && 'bg-suma-red-tint/60',
       )}
     >
       {suggestions.length > 0 && !text && !image ? (
@@ -152,7 +152,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
                 setText(suggestion);
                 textareaRef.current?.focus();
               }}
-              className="shrink-0 rounded-full border border-suma-border px-3 py-1 text-xs whitespace-nowrap text-suma-muted transition-colors hover:border-suma-primary-soft hover:bg-suma-primary-tint hover:text-suma-primary"
+              className="shrink-0 rounded-full border border-suma-border px-3 py-1 text-xs whitespace-nowrap text-suma-muted transition-colors hover:border-suma-muted hover:bg-suma-high hover:text-suma-ink"
             >
               {suggestion}
             </button>
@@ -161,7 +161,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
       ) : null}
 
       {image ? (
-        <div className="mb-3 flex items-center gap-3 rounded-lg border border-suma-border bg-suma-surface p-2">
+        <div className="mb-3 flex items-center gap-3 rounded-lg border border-suma-border bg-suma-canvas p-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={image.dataUrl}
@@ -177,7 +177,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
           <button
             type="button"
             onClick={() => setImage(null)}
-            className="rounded-md p-1.5 text-suma-muted transition-colors hover:bg-white hover:text-suma-danger"
+            className="rounded-md p-1.5 text-suma-muted transition-colors hover:bg-suma-raised hover:text-suma-danger"
             aria-label="Quitar la fotografía"
           >
             <X className="size-4" aria-hidden />
@@ -221,7 +221,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
           placeholder={
             awaitingQuantity ? 'Escribe la cantidad: «24 m2», «4 por 5 metros»…' : placeholder
           }
-          className="max-h-40 min-h-10 flex-1 resize-none rounded-lg border border-suma-border bg-white px-3 py-2.5 text-sm text-suma-ink placeholder:text-suma-muted/60 focus:border-suma-primary-soft focus:ring-2 focus:ring-suma-primary-tint focus:outline-none disabled:bg-slate-50"
+          className="max-h-40 min-h-10 flex-1 resize-none rounded-lg border border-suma-border bg-suma-raised px-3 py-2.5 text-sm text-suma-ink placeholder:text-suma-faint focus:border-suma-red focus:ring-2 focus:ring-suma-red/25 focus:outline-none disabled:bg-suma-high"
         />
 
         <Button

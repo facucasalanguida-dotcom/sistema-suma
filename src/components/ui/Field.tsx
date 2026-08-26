@@ -5,9 +5,9 @@ import { useId } from 'react';
 import { cn } from '@/lib/cn';
 
 const CONTROL =
-  'w-full rounded-lg border border-suma-border bg-white px-3 py-2 text-sm text-suma-ink ' +
-  'placeholder:text-suma-muted/60 focus:border-suma-primary-soft focus:outline-none ' +
-  'focus:ring-2 focus:ring-suma-primary-tint disabled:bg-slate-50';
+  'w-full rounded-lg border border-suma-border bg-suma-high px-3 py-2 text-sm text-suma-ink ' +
+  'placeholder:text-suma-faint focus:border-suma-red focus:outline-none ' +
+  'focus:ring-2 focus:ring-suma-red/25 disabled:opacity-50';
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
@@ -24,7 +24,7 @@ export function Field({ label, hint, className, id, ...props }: FieldProps) {
         {label}
       </label>
       <input id={inputId} {...props} className={CONTROL} />
-      {hint ? <p className="text-[11px] text-suma-muted">{hint}</p> : null}
+      {hint ? <p className="text-[11px] text-suma-faint">{hint}</p> : null}
     </div>
   );
 }
@@ -44,7 +44,7 @@ export function TextAreaField({ label, hint, className, id, ...props }: TextArea
         {label}
       </label>
       <textarea id={inputId} {...props} className={cn(CONTROL, 'resize-y')} />
-      {hint ? <p className="text-[11px] text-suma-muted">{hint}</p> : null}
+      {hint ? <p className="text-[11px] text-suma-faint">{hint}</p> : null}
     </div>
   );
 }

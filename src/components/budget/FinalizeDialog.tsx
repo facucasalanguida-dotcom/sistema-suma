@@ -81,7 +81,7 @@ export function FinalizeDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-suma-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="suma-finalizar-titulo"
@@ -91,13 +91,13 @@ export function FinalizeDialog({
     >
       <div
         ref={dialogRef}
-        className="suma-scroll flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-y-auto rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+        className="suma-scroll flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-y-auto rounded-t-2xl bg-suma-raised shadow-2xl sm:rounded-2xl"
       >
-        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-suma-border bg-white px-5 py-4">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-suma-border bg-suma-raised px-5 py-4">
           <div className="flex items-center gap-3">
-            <SumaLogo size={30} markOnly />
+            <SumaLogo size={15} />
             <div>
-              <h2 id="suma-finalizar-titulo" className="text-base font-bold text-suma-primary">
+              <h2 id="suma-finalizar-titulo" className="text-base font-bold text-suma-ink">
                 Finalizar presupuesto
               </h2>
               <p className="text-xs text-suma-muted">
@@ -111,7 +111,7 @@ export function FinalizeDialog({
             type="button"
             onClick={onClose}
             disabled={busy}
-            className="rounded-md p-1.5 text-suma-muted transition-colors hover:bg-suma-surface hover:text-suma-ink disabled:opacity-40"
+            className="rounded-md p-1.5 text-suma-muted transition-colors hover:bg-suma-canvas hover:text-suma-ink disabled:opacity-40"
             aria-label="Cerrar"
           >
             <X className="size-4" aria-hidden />
@@ -120,7 +120,7 @@ export function FinalizeDialog({
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-5 py-5">
           <section className="flex flex-col gap-3">
-            <h3 className="text-xs font-bold tracking-wide text-suma-primary-soft uppercase">
+            <h3 className="text-xs font-bold tracking-wide text-suma-red uppercase">
               Datos del cliente
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -178,7 +178,7 @@ export function FinalizeDialog({
           </section>
 
           <section className="flex flex-col gap-3">
-            <h3 className="text-xs font-bold tracking-wide text-suma-primary-soft uppercase">
+            <h3 className="text-xs font-bold tracking-wide text-suma-red uppercase">
               Condiciones económicas
             </h3>
             <div className="grid gap-3 sm:grid-cols-2">
@@ -242,8 +242,8 @@ export function FinalizeDialog({
             />
           </section>
 
-          <section className="rounded-xl border border-suma-border bg-suma-surface px-4 py-3">
-            <h3 className="mb-2 text-xs font-bold tracking-wide text-suma-primary-soft uppercase">
+          <section className="rounded-xl border border-suma-border bg-suma-canvas px-4 py-3">
+            <h3 className="mb-2 text-xs font-bold tracking-wide text-suma-red uppercase">
               Resumen
             </h3>
             <dl className="flex flex-col gap-1 text-sm">
@@ -260,8 +260,8 @@ export function FinalizeDialog({
                 value={formatCurrency(totals.vatAmount)}
               />
               <div className="mt-1 flex items-baseline justify-between border-t border-suma-border pt-2">
-                <dt className="text-sm font-bold text-suma-primary">TOTAL</dt>
-                <dd className="text-lg font-bold text-suma-primary tabular-nums">
+                <dt className="text-sm font-bold text-suma-ink">TOTAL</dt>
+                <dd className="text-lg font-bold text-suma-ink tabular-nums">
                   {formatCurrency(totals.total)}
                 </dd>
               </div>
@@ -277,7 +277,7 @@ export function FinalizeDialog({
             </Button>
             <Button
               type="submit"
-              variant="accent"
+              variant="primary"
               loading={busy}
               icon={<FileDown className="size-4" aria-hidden />}
             >

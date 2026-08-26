@@ -47,7 +47,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 10,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Pavimento porcelánico rectificado 60×60 cm, acabado mate gris cemento',
         brand: 'Fabresa',
         price: 14.9,
@@ -134,7 +134,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 0,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Cemento gris CEM II/B-L 32,5 N, saco de 25 kg',
         brand: 'Cemex',
         price: 4.85,
@@ -350,7 +350,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 5,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Ladrillo cerámico perforado 24 × 11,5 × 7 cm',
         brand: 'Cerámica local',
         price: 0.19,
@@ -394,7 +394,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 5,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Bloque de hormigón vibrado gris 40 × 20 × 20 cm',
         brand: 'Prefabricados locales',
         price: 0.72,
@@ -449,7 +449,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 0,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Arena de río lavada 0/4 mm, a granel',
         brand: 'Cantera local',
         price: 21,
@@ -491,7 +491,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 5,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Barra de acero corrugado B500S Ø12 mm, barra de 6 m',
         brand: 'Siderúrgica nacional',
         price: 4.8,
@@ -708,7 +708,7 @@ const DEMO_PRODUCTS: DemoProduct[] = [
     recommendedWastePct: 8,
     variants: [
       {
-        supplier: 'BigMat',
+        supplier: 'BigMat Macosol',
         productName: 'Teja cerámica curva roja 40 × 19 cm',
         brand: 'Cerámica local',
         price: 0.58,

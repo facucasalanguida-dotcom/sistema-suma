@@ -1,59 +1,80 @@
 /**
- * Identidad de marca de SUMA.
+ * Identidad de marca de GRUPO SUMA.
  *
  * ────────────────────────────────────────────────────────────────────────────
  * PUNTO ÚNICO DE CONFIGURACIÓN DE MARCA
  * ────────────────────────────────────────────────────────────────────────────
- * Todo el sistema (interfaz web y PDF) lee los colores, la tipografía y los
- * datos fiscales desde este archivo. Para adaptar el sistema a la identidad
- * corporativa oficial de https://www.gruposuma.eu basta con editar aquí.
+ * Toda la aplicación y el PDF leen los colores desde aquí. Los valores de
+ * `brandColors` se replican como variables CSS en `globals.css` (`--color-suma-*`),
+ * de modo que la web y el documento se mantienen sincronizados.
  *
- * Los valores `colors` se exponen además como variables CSS en `globals.css`
- * (ver `--color-suma-*`), de modo que cambiarlos aquí y allí mantiene la web y
- * el PDF perfectamente sincronizados.
+ * La identidad es la de gruposuma.eu: fondo casi negro, rojo corporativo y
+ * tipografía blanca. El logotipo es el wordmark «GRUPO SUMA +», con «GRUPO»
+ * girado en vertical y el signo «+» en rojo.
  */
 
-/**
- * NOTA SOBRE LOS COLORES
- *
- * No ha sido posible acceder a https://www.gruposuma.eu desde el entorno de
- * desarrollo (la política de red del contenedor bloquea el dominio), de modo
- * que la paleta de abajo es una interpretación corporativa, no una captura del
- * manual de marca. El isotipo sí responde al significado del nombre: SUMA
- * suma, y la marca se construye sobre un signo «+».
- *
- * Para dejarlo exacto basta con sustituir aquí los seis primeros valores y los
- * `--color-suma-*` de `src/app/globals.css`. Nada más depende de ellos.
- */
 export const brandColors = {
-  /** Azul corporativo principal: cabeceras, botones primarios, marca. */
-  primary: '#0E2A47',
-  /** Variante clara del principal, para fondos y estados hover. */
-  primarySoft: '#1B4571',
-  /** Variante muy clara, para superficies tintadas. */
-  primaryTint: '#E8EFF7',
-  /** Naranja de acento: llamadas a la acción, resaltados, datos clave. */
-  accent: '#F07C00',
-  /** Variante clara del acento. */
-  accentSoft: '#FFB25C',
-  /** Variante muy clara del acento, para superficies tintadas. */
-  accentTint: '#FFF2E2',
-  /** Verde de confirmación (material añadido, disponibilidad). */
-  success: '#137A4D',
-  /** Ámbar de advertencia (precio estimado, baja confianza). */
-  warning: '#B45309',
-  /** Rojo de error. */
-  danger: '#B42318',
+  /** Rojo corporativo: el «+» del logotipo, acciones principales y acentos. */
+  red: '#E1252C',
+  /** Rojo aclarado, para estados de foco y sobre fondo oscuro. */
+  redBright: '#FF4B52',
+  /** Rojo profundo, para estados pulsados y para lo que se imprime. */
+  redDeep: '#A4161C',
+  /** Superficie tintada de rojo sobre fondo oscuro. */
+  redTint: '#2B1216',
+
+  /** Fondo general de la aplicación. */
+  canvas: '#0B0B0F',
+  /** Paneles y barras. */
+  surface: '#131419',
+  /** Tarjetas sobre los paneles. */
+  raised: '#1B1C22',
+  /** Campos de formulario y elementos interactivos. */
+  high: '#24252C',
+
+  /** Bordes visibles. */
+  border: '#2F3037',
+  /** Separadores discretos. */
+  borderSoft: '#212228',
+
   /** Texto principal. */
-  ink: '#101828',
+  ink: '#F4F4F6',
   /** Texto secundario. */
-  inkMuted: '#5A6478',
-  /** Bordes y separadores. */
-  border: '#DCE3EC',
-  /** Fondo de la aplicación. */
-  surface: '#F6F8FB',
-  /** Fondo de tarjetas. */
-  surfaceRaised: '#FFFFFF',
+  muted: '#A3A5AE',
+  /** Texto terciario y marcadores de posición. */
+  faint: '#6C6E77',
+
+  /** Verde de confirmación, calibrado para leerse sobre fondo oscuro. */
+  success: '#3CC98D',
+  /** Ámbar de advertencia (precio estimado, modo demostración). */
+  warning: '#F2A93B',
+  /** Rojo de error, distinguible del rojo de marca. */
+  danger: '#FF5C61',
+} as const;
+
+/**
+ * Paleta del PDF.
+ *
+ * Un presupuesto se imprime y se archiva, así que el cuerpo va en blanco: un
+ * documento con fondo negro gasta tóner, se lee peor en papel y no es lo que
+ * espera recibir un cliente. La marca entra por las bandas —cabecera, cabecera
+ * de tabla, bloque de total y filetes—, que sí van en el negro y el rojo de
+ * SUMA.
+ */
+export const printColors = {
+  paper: '#FFFFFF',
+  /** Negro de marca para las bandas del documento. */
+  band: '#101116',
+  bandSoft: '#1B1C22',
+  red: '#D2202A',
+  redDeep: '#A4161C',
+  redTint: '#FCEFF0',
+  ink: '#16171C',
+  muted: '#5C5E68',
+  border: '#DCDDE2',
+  tint: '#F5F6F8',
+  success: '#15794F',
+  warning: '#A2560B',
 } as const;
 
 export type BrandColor = keyof typeof brandColors;
@@ -70,8 +91,9 @@ export const company = {
   email: process.env.NEXT_PUBLIC_SUMA_EMAIL ?? 'info@gruposuma.eu',
   phone: process.env.NEXT_PUBLIC_SUMA_PHONE ?? '+34 000 000 000',
   website: process.env.NEXT_PUBLIC_SUMA_WEBSITE ?? 'www.gruposuma.eu',
-  tagline: 'Presupuestos de construcción',
-  slogan: 'En Grupo SUMA estamos para SUMAr',
+  /** Los tres servicios que encabezan la web. */
+  tagline: 'Diseño interior · Reformas · Construcción',
+  slogan: 'Transformamos espacios',
   /**
    * Datos registrales. El artículo 24 del Código de Comercio obliga a las
    * sociedades mercantiles a hacerlos constar en su documentación, y un

@@ -78,7 +78,7 @@ export function QuantityPrompt({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-3 rounded-xl border border-suma-accent-soft/70 bg-suma-accent-tint/50 p-4"
+      className="flex flex-col gap-3 rounded-xl border border-suma-red/45 bg-suma-red-tint/60 p-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
@@ -92,7 +92,7 @@ export function QuantityPrompt({
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-md p-1 text-suma-muted transition-colors hover:bg-white hover:text-suma-danger"
+          className="rounded-md p-1 text-suma-muted transition-colors hover:bg-suma-raised hover:text-suma-danger"
           aria-label="Cancelar esta partida"
         >
           <X className="size-4" aria-hidden />
@@ -157,7 +157,7 @@ export function QuantityPrompt({
 
         <Button
           type="submit"
-          variant="accent"
+          variant="primary"
           disabled={!valid}
           loading={busy}
           icon={<Calculator className="size-4" aria-hidden />}
@@ -169,11 +169,11 @@ export function QuantityPrompt({
       {preview instanceof PricingError ? (
         <p className="text-xs font-medium text-suma-danger">{preview.message}</p>
       ) : preview ? (
-        <div className="rounded-lg bg-white/80 px-3 py-2.5 text-xs">
+        <div className="rounded-lg bg-suma-high/70 px-3 py-2.5 text-xs">
           <p className="font-semibold text-suma-ink tabular-nums">
             {formatPrecise(preview.saleUnits)}{' '}
             {saleUnitLabel(offer.saleUnit, preview.saleUnits)} ·{' '}
-            <span className="text-suma-accent">{formatCurrency(preview.lineTotal)}</span>{' '}
+            <span className="text-suma-red">{formatCurrency(preview.lineTotal)}</span>{' '}
             <span className="font-normal text-suma-muted">(sin IVA)</span>
           </p>
           <p className="mt-1 leading-relaxed text-suma-muted">{preview.explanation}</p>

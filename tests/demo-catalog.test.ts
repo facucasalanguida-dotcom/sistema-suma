@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { demoTypicalUnit, searchDemoCatalog } from '@/lib/demo/catalog';
 import { computeLinePrice } from '@/lib/pricing';
 import { supplierOfferSchema } from '@/lib/types';
+import { SUPPLIER_DIRECTORY } from '@/lib/demo/suppliers';
 
 describe('catálogo de demostración', () => {
   it('encuentra porcelánico aunque la consulta lleve tildes y palabras sueltas', () => {
@@ -77,5 +78,27 @@ describe('familias de producto', () => {
   it('sigue encontrando la impermeabilización cuando se pide por su nombre', () => {
     expect(searchDemoCatalog('lámina asfáltica').length).toBeGreaterThan(0);
     expect(searchDemoCatalog('impermeabilización de cubierta').length).toBeGreaterThan(0);
+  });
+});
+
+describe('coherencia con el directorio de proveedores', () => {
+  it('cada oferta del catálogo apunta a un proveedor del directorio', () => {
+    const known = new Set(SUPPLIER_DIRECTORY.map((supplier) => supplier.name));
+    const queries = [
+      'porcelanico', 'cemento', 'cemento cola', 'pladur', 'aislamiento', 'ladrillo',
+      'bloque', 'hormigon', 'arena', 'acero', 'pintura', 'tubo pvc', 'cable',
+      'madera', 'teja', 'lamina asfaltica',
+    ];
+
+    for (const query of queries) {
+      for (const offer of searchDemoCatalog(query, 20)) {
+        // Un nombre que no está en el directorio pierde el municipio y la web,
+        // y la oferta acaba mostrando «Provincia de Málaga» a secas.
+        expect(known, `${offer.productName} → ${offer.supplier.name}`).toContain(
+          offer.supplier.name,
+        );
+        expect(offer.supplier.location).not.toBe('Provincia de Málaga');
+      }
+    }
   });
 });
