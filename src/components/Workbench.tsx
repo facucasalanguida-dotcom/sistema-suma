@@ -116,9 +116,12 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
 
       {!aiEnabled ? (
         <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-suma-warning sm:px-6">
-          No hay ninguna clave de Gemini configurada, así que el sistema responde con un catálogo
-          local de precios orientativos. Añade <code className="font-mono">GEMINI_API_KEY</code> a{' '}
-          <code className="font-mono">.env.local</code> para buscar tarifas reales en Internet.
+          Sin clave de Gemini: precios orientativos de un catálogo local.
+          <span className="hidden sm:inline">
+            {' '}
+            Añade <code className="font-mono">GEMINI_API_KEY</code> a{' '}
+            <code className="font-mono">.env.local</code> para buscar tarifas reales en Internet.
+          </span>
         </div>
       ) : null}
 

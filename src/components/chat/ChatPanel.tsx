@@ -1,7 +1,15 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { CircleAlert, CircleCheck, Globe, Sparkles } from 'lucide-react';
+import {
+  CircleAlert,
+  CircleCheck,
+  FileDown,
+  Globe,
+  ListPlus,
+  MessageSquareText,
+  Sparkles,
+} from 'lucide-react';
 import { OfferCard } from './OfferCard';
 import { QuantityPrompt } from './QuantityPrompt';
 import { Badge } from '@/components/ui/Badge';
@@ -9,7 +17,7 @@ import { SumaLogo } from '@/components/brand/SumaLogo';
 import { formatCurrency, formatPrecise, formatTime } from '@/lib/format';
 import type { ChatMessage, SupplierOffer } from '@/lib/types';
 import { saleUnitLabel } from '@/lib/units';
-import type { AssistantStatus } from '@/lib/store';
+import { WELCOME_MESSAGE_ID, type AssistantStatus } from '@/lib/store';
 
 const STATUS_LABEL: Record<Exclude<AssistantStatus, 'idle'>, string> = {
   interpretando: 'Interpretando lo que necesitas…',
@@ -58,6 +66,8 @@ export function ChatPanel({
             onCancelQuantity={onCancelQuantity}
           />
         ))}
+
+        {messages.length <= 1 && status === 'idle' ? <ProcessHint /> : null}
 
         {status !== 'idle' ? (
           <div className="suma-rise flex items-center gap-3">
@@ -185,9 +195,52 @@ function Message({
           </div>
         ) : null}
 
-        <time className="mt-1 block text-[11px] text-suma-muted">{formatTime(message.at)}</time>
+        {message.id === WELCOME_MESSAGE_ID ? null : (
+          <time className="mt-1 block text-[11px] text-suma-muted">{formatTime(message.at)}</time>
+        )}
       </div>
     </div>
+  );
+}
+
+/** Guía breve del proceso, mientras la conversación está en blanco. */
+function ProcessHint() {
+  const steps = [
+    {
+      icon: <MessageSquareText className="size-4" aria-hidden />,
+      title: 'Describe o fotografía',
+      text: 'Escribe el material que necesitas o sube una foto: la IA la interpreta.',
+    },
+    {
+      icon: <ListPlus className="size-4" aria-hidden />,
+      title: 'Compara y añade',
+      text: 'Verás varias opciones de proveedores de Málaga con su precio y su rendimiento.',
+    },
+    {
+      icon: <FileDown className="size-4" aria-hidden />,
+      title: 'Finaliza en PDF',
+      text: 'Indica la cantidad de cada partida y descarga el presupuesto con la marca de SUMA.',
+    },
+  ];
+
+  return (
+    <ol className="grid gap-3 sm:grid-cols-3">
+      {steps.map((step, index) => (
+        <li
+          key={step.title}
+          className="rounded-xl border border-suma-border bg-white/70 px-4 py-3.5"
+        >
+          <div className="flex items-center gap-2 text-suma-primary-soft">
+            <span className="flex size-6 items-center justify-center rounded-md bg-suma-primary-tint text-[11px] font-bold">
+              {index + 1}
+            </span>
+            {step.icon}
+          </div>
+          <p className="mt-2 text-[13px] font-semibold text-suma-ink">{step.title}</p>
+          <p className="mt-1 text-xs leading-relaxed text-suma-muted">{step.text}</p>
+        </li>
+      ))}
+    </ol>
   );
 }
 

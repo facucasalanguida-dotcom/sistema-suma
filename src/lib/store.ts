@@ -59,8 +59,11 @@ const EMPTY_CLIENT: ClientDetails = {
   siteAddress: '',
 };
 
+/** El saludo inicial no forma parte del diálogo: no lleva hora ni se repite. */
+export const WELCOME_MESSAGE_ID = 'welcome';
+
 const WELCOME: ChatMessage = {
-  id: 'welcome',
+  id: WELCOME_MESSAGE_ID,
   role: 'assistant',
   kind: 'text',
   text:

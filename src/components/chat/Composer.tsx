@@ -5,6 +5,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ChangeEvent,
   type DragEvent,
   type FormEvent,
@@ -23,6 +24,19 @@ import { cn } from '@/lib/cn';
  * portapapeles (una captura del catálogo del proveedor, por ejemplo).
  */
 
+/** `true` cuando la ventana es estrecha, para acortar los textos de ayuda. */
+function useNarrowViewport(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const query = window.matchMedia('(max-width: 639px)');
+      query.addEventListener('change', onChange);
+      return () => query.removeEventListener('change', onChange);
+    },
+    () => window.matchMedia('(max-width: 639px)').matches,
+    () => false,
+  );
+}
+
 interface ComposerProps {
   onSend: (text: string, image: PreparedImage | null) => void;
   busy: boolean;
@@ -32,6 +46,11 @@ interface ComposerProps {
 }
 
 export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: ComposerProps) {
+  // En pantallas estrechas el ejemplo largo se cortaba dentro del campo.
+  const placeholder = useNarrowViewport()
+    ? 'Describe el material que necesitas…'
+    : 'Describe el material: «porcelánico 60x60 antideslizante para 40 m² de terraza»';
+
   const [text, setText] = useState('');
   const [image, setImage] = useState<PreparedImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -124,7 +143,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
       )}
     >
       {suggestions.length > 0 && !text && !image ? (
-        <div className="mb-3 flex flex-wrap gap-1.5">
+        <div className="suma-scroll mb-3 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-x-visible sm:pb-0">
           {suggestions.map((suggestion) => (
             <button
               key={suggestion}
@@ -133,7 +152,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
                 setText(suggestion);
                 textareaRef.current?.focus();
               }}
-              className="rounded-full border border-suma-border px-3 py-1 text-xs text-suma-muted transition-colors hover:border-suma-primary-soft hover:bg-suma-primary-tint hover:text-suma-primary"
+              className="shrink-0 rounded-full border border-suma-border px-3 py-1 text-xs whitespace-nowrap text-suma-muted transition-colors hover:border-suma-primary-soft hover:bg-suma-primary-tint hover:text-suma-primary"
             >
               {suggestion}
             </button>
@@ -200,9 +219,7 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
           onKeyDown={handleKeyDown}
           disabled={busy}
           placeholder={
-            awaitingQuantity
-              ? 'Escribe la cantidad: «24 m2», «el salón mide 4 por 5 metros»…'
-              : 'Describe el material: «porcelánico 60x60 antideslizante para 40 m² de terraza»'
+            awaitingQuantity ? 'Escribe la cantidad: «24 m2», «4 por 5 metros»…' : placeholder
           }
           className="max-h-40 min-h-10 flex-1 resize-none rounded-lg border border-suma-border bg-white px-3 py-2.5 text-sm text-suma-ink placeholder:text-suma-muted/60 focus:border-suma-primary-soft focus:ring-2 focus:ring-suma-primary-tint focus:outline-none disabled:bg-slate-50"
         />
@@ -221,7 +238,8 @@ export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: C
       </form>
 
       <p className="mt-2 text-[11px] text-suma-muted">
-        Intro envía · Mayús + Intro salta de línea · puedes arrastrar o pegar una imagen
+        Intro envía · Mayús + Intro salta de línea
+        <span className="hidden sm:inline"> · puedes arrastrar o pegar una imagen</span>
       </p>
     </div>
   );
