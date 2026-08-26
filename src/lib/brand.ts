@@ -102,6 +102,21 @@ export const company = {
   registryDetails: process.env.NEXT_PUBLIC_SUMA_REGISTRY ?? '',
 } as const;
 
+/** NIF de ejemplo que trae el código cuando nadie ha configurado el emisor. */
+const PLACEHOLDER_TAX_ID = 'B00000000';
+
+/**
+ * `true` mientras los datos fiscales del emisor sigan siendo los de ejemplo.
+ *
+ * El sistema funciona igual sin ellos —es lo cómodo para probar—, pero un
+ * presupuesto con el NIF B00000000 no puede llegarle a un cliente. Cuando esto
+ * es cierto, el PDF se marca como documento de prueba y la interfaz avisa antes
+ * de generarlo. En cuanto se configura `NEXT_PUBLIC_SUMA_TAX_ID`, el aviso
+ * desaparece solo: no hay nada que acordarse de quitar.
+ */
+export const issuerIsPlaceholder =
+  company.taxId.trim() === '' || company.taxId === PLACEHOLDER_TAX_ID;
+
 /** Ámbito geográfico de la búsqueda de proveedores. */
 export const searchScope = {
   province: 'Málaga',

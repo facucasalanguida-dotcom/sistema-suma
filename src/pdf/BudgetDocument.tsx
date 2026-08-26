@@ -1,7 +1,7 @@
 import { Document, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import { SumaPdfLogo } from './logo';
 import { pdfText } from './text';
-import { company, printColors } from '@/lib/brand';
+import { company, issuerIsPlaceholder, printColors } from '@/lib/brand';
 import { formatCurrency, formatLongDate, formatPrecise } from '@/lib/format';
 import type { BudgetDocumentData } from '@/lib/types';
 import { agreeWithSaleUnit, measureLabel, saleUnitLabel } from '@/lib/units';
@@ -72,6 +72,23 @@ const styles = StyleSheet.create({
     marginTop: 7,
     textTransform: 'uppercase',
   },
+
+  /* Aviso de datos del emisor sin configurar ----------------------------- */
+  draftBanner: {
+    marginTop: 16,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: printColors.red,
+    backgroundColor: printColors.redTint,
+  },
+  draftTitle: {
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 8.5,
+    letterSpacing: 1.4,
+    color: printColors.redDeep,
+    marginBottom: 3,
+  },
+  draftText: { fontSize: 8, color: printColors.ink, lineHeight: 1.45 },
 
   /* Bloques de datos ----------------------------------------------------- */
   panels: { flexDirection: 'row', gap: 12, marginTop: 16 },
@@ -275,6 +292,17 @@ export function BudgetDocument({ data }: BudgetDocumentProps) {
             <Text style={styles.headerMeta}>Válido hasta: {formatLongDate(data.validUntil)}</Text>
           </View>
         </View>
+
+        {issuerIsPlaceholder ? (
+          <View style={styles.draftBanner}>
+            <Text style={styles.draftTitle}>DOCUMENTO DE PRUEBA</Text>
+            <Text style={styles.draftText}>
+              Los datos del emisor son todavía los de ejemplo: el NIF, el domicilio y el
+              teléfono que figuran abajo no son los de SUMA. Este presupuesto sirve para
+              probar el sistema; no debe enviarse a un cliente.
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.panels}>
           <View style={styles.panel}>

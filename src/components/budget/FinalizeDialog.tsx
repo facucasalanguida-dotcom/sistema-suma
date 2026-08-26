@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, TextAreaField, fieldControlClass } from '@/components/ui/Field';
 import { SumaLogo } from '@/components/brand/SumaLogo';
 import { formatCurrency, formatLongDate, formatPrecise } from '@/lib/format';
+import { issuerIsPlaceholder } from '@/lib/brand';
 import { DEFAULT_VAT_PCT, REDUCED_VAT_PCT, validUntil } from '@/lib/pricing';
 import type { BudgetTotals, ClientDetails } from '@/lib/types';
 import { cn } from '@/lib/cn';
@@ -119,6 +120,15 @@ export function FinalizeDialog({
         </header>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-5 px-5 py-5">
+          {issuerIsPlaceholder ? (
+            <p className="rounded-lg border border-suma-warning/30 bg-suma-warning/10 px-3 py-2.5 text-xs text-suma-warning">
+              <strong className="font-semibold">Faltan los datos fiscales de SUMA.</strong> El PDF
+              saldrá marcado como documento de prueba, con el NIF y el domicilio de ejemplo.
+              Se arregla definiendo las variables <code className="font-mono">NEXT_PUBLIC_SUMA_*</code>{' '}
+              en el entorno.
+            </p>
+          ) : null}
+
           <section className="flex flex-col gap-3">
             <h3 className="text-xs font-bold tracking-wide text-suma-red uppercase">
               Datos del cliente
