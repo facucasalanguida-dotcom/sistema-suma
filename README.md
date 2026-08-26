@@ -78,6 +78,7 @@ src/
     gemini/         Cliente, prompts, esquemas y las tres llamadas al modelo
     demo/           Directorio de proveedores de Málaga y catálogo de respaldo
   pdf/              Documento PDF y logotipo vectorial
+  proxy.ts          Puerta de acceso opcional por contraseña compartida
 ```
 
 ### Por qué la búsqueda son dos llamadas
@@ -121,7 +122,7 @@ Para usar la tipografía corporativa basta con registrarla con `Font.register`.
 ## Pruebas
 
 ```bash
-npm test          # 69 pruebas unitarias: unidades, aritmética, catálogo, PDF
+npm test          # 77 pruebas unitarias: unidades, aritmética, catálogo, PDF, acceso
 npm run test:e2e  # recorrido completo en navegador, del chat al PDF
 npm run typecheck
 npm run lint
@@ -137,6 +138,74 @@ dónde está en lugar de descargar otro:
 ```bash
 PLAYWRIGHT_CHROMIUM_PATH=/ruta/a/chromium npm run test:e2e
 ```
+
+## Despliegue en Vercel
+
+El proyecto va preparado para desplegarse sin configuración adicional: se
+importa el repositorio en Vercel, se detecta Next.js y se construye.
+
+### 1. Variables de entorno
+
+En **Project → Settings → Environment Variables**, para *Production*,
+*Preview* y *Development*:
+
+| Variable | Obligatoria | Para qué |
+| --- | --- | --- |
+| `GEMINI_API_KEY` | No, pero sin ella todo va en modo demostración | Lectura de fotografías y búsqueda real de proveedores |
+| `SUMA_ACCESS_PASSWORD` | Recomendable | Contraseña compartida para entrar |
+| `NEXT_PUBLIC_SUMA_*` | Sí, antes de emitir un presupuesto | Datos fiscales del emisor que salen impresos |
+| `GEMINI_*_MODEL`, `GEMINI_TIMEOUT_MS` | No | Ajuste fino de modelo y tiempos |
+
+**La clave de Gemini nunca llega al navegador**: sólo la leen las rutas de
+API, que se ejecutan en el servidor. Los datos del emisor sí llevan el prefijo
+`NEXT_PUBLIC_` porque también se muestran en la interfaz.
+
+### 2. Proteger el acceso
+
+Al desplegar, la aplicación queda en una URL pública y cualquiera que la
+encuentre puede lanzar búsquedas que se facturan contra vuestra clave. Con
+`SUMA_ACCESS_PASSWORD` definida, `src/proxy.ts` pide una contraseña compartida
+con el diálogo propio del navegador —cubre también las rutas de API y la
+descarga del PDF— y sin ella no hace nada, que es lo cómodo en local. Si tenéis
+plan de pago, la *Password Protection* de Vercel hace lo mismo desde el panel.
+
+### 3. Ajustes del panel
+
+No hay `vercel.json` a propósito. Para Next.js, Vercel documenta que la
+duración de cada función se declara en el propio archivo de ruta —cosa que ya
+está hecha con `export const maxDuration`— y que la memoria y la región se
+configuran desde el panel. Un `vercel.json` con globs de funciones sólo añade
+una forma más de que falle el primer despliegue.
+
+Merece la pena tocar una cosa en **Settings → Functions**:
+
+- **Function Region → `cdg1` (París)**, la más cercana a Málaga de las
+  disponibles. Por defecto se despliega en Washington, y son unos 100 ms de ida
+  y vuelta en cada llamada.
+
+### 4. Lo que ya viene resuelto
+
+- **Tiempos.** Una búsqueda encadena dos llamadas al modelo, así que comparten
+  un presupuesto de tiempo (`GEMINI_TIMEOUT_MS`, 45 s) que queda por debajo del
+  límite de 60 s de la función. Así el usuario recibe un mensaje que le sirve en
+  lugar de un error genérico de pasarela.
+- **Tipografías del PDF.** Las métricas de Helvetica y Times viven en `pdfkit` y
+  se cargan por un especificador interno que el rastreador de dependencias no
+  siempre sigue. `outputFileTracingIncludes` las incluye a mano: si faltaran, el
+  PDF fallaría sólo en producción.
+- **Cabeceras** `nosniff`, `X-Frame-Options`, `Referrer-Policy` y `noindex`.
+- **Node 20.9+** fijado en `engines` y `.nvmrc`.
+
+### 5. Comprobación tras el primer despliegue
+
+```bash
+npm run build && npm start   # reproduce en local lo que ejecuta Vercel
+```
+
+Ya en la URL desplegada: buscar un material, añadir una partida y descargar el
+PDF. Si el PDF falla y el resto funciona, el problema está en el rastreo de las
+tipografías; si la búsqueda devuelve precios del catálogo local con el aviso de
+modo demostración, falta `GEMINI_API_KEY` en el entorno correcto.
 
 ## Sobre los datos
 

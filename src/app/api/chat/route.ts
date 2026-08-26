@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { describeGeminiError, isGeminiConfigured } from '@/lib/gemini/client';
+import { createBudget, describeGeminiError, isGeminiConfigured } from '@/lib/gemini/client';
 import {
   MAX_IMAGE_BYTES,
   SUPPORTED_IMAGE_TYPES,
@@ -11,7 +11,10 @@ import { searchDemoCatalog } from '@/lib/demo/catalog';
 import { chatRequestSchema, type ChatResponsePayload } from '@/lib/types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 120;
+// Límite de una función de Vercel en el plan gratuito. El presupuesto de
+// tiempo de la IA (`GEMINI_TIMEOUT_MS`, 45 s) queda por debajo a propósito,
+// para que la aplicación conteste antes de que la plataforma corte.
+export const maxDuration = 60;
 
 /**
  * Pasos 1 a 3 del proceso: recibe el mensaje (texto y/o imagen), entiende qué
@@ -58,8 +61,10 @@ export async function POST(request: Request) {
     return NextResponse.json(buildDemoResponse(payload));
   }
 
+  const budget = createBudget();
+
   try {
-    const materialRequest = await interpretMaterial(payload);
+    const materialRequest = await interpretMaterial(payload, budget);
 
     // Sólo se interrumpe para preguntar cuando la interpretación es floja de
     // verdad; si hay algo con lo que buscar, se busca y se enseñan resultados.
@@ -75,7 +80,7 @@ export async function POST(request: Request) {
       return NextResponse.json(response);
     }
 
-    const search = await searchSuppliers(materialRequest);
+    const search = await searchSuppliers(materialRequest, budget);
 
     const response: ChatResponsePayload = {
       reply: buildReply(materialRequest, search.summary, search.offers.length),
@@ -109,6 +114,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ error: describeGeminiError(error) }, { status: 502 });
+  } finally {
+    budget.release();
   }
 }
 

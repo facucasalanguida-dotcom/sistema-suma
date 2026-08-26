@@ -1,5 +1,12 @@
 import type { GenerateContentResponse } from '@google/genai';
-import { SEARCH_MODEL, UTILITY_MODEL, extractJson, getGemini, withTimeout } from './client';
+import {
+  SEARCH_MODEL,
+  UTILITY_MODEL,
+  extractJson,
+  getGemini,
+  withTimeout,
+  type RequestBudget,
+} from './client';
 import {
   BASE_SYSTEM,
   buildKnowledgeOnlyPrompt,
@@ -33,14 +40,17 @@ export interface SupplierSearchResult {
  * segunda convierte ese informe en datos estructurados sin herramientas.
  * De paso, la separación permite conservar las fuentes citadas.
  */
-export async function searchSuppliers(request: MaterialRequest): Promise<SupplierSearchResult> {
+export async function searchSuppliers(
+  request: MaterialRequest,
+  budget?: RequestBudget,
+): Promise<SupplierSearchResult> {
   const description = describeMaterial(request);
 
   let findings = '';
   let sources: GroundingSource[] = [];
 
   try {
-    const grounded = await runGroundedSearch(description, request.searchQueries);
+    const grounded = await runGroundedSearch(description, request.searchQueries, budget);
     findings = grounded.text;
     sources = grounded.sources;
   } catch (error) {
@@ -48,8 +58,8 @@ export async function searchSuppliers(request: MaterialRequest): Promise<Supplie
   }
 
   const structured = findings
-    ? await structureFindings(description, findings)
-    : await runKnowledgeOnlySearch(description);
+    ? await structureFindings(description, findings, budget)
+    : await runKnowledgeOnlySearch(description, budget);
 
   const offers = structured.offers.filter((offer) => offer.price > 0);
 
@@ -75,6 +85,7 @@ export async function searchSuppliers(request: MaterialRequest): Promise<Supplie
 async function runGroundedSearch(
   description: string,
   queries: string[],
+  budget?: RequestBudget,
 ): Promise<{ text: string; sources: GroundingSource[] }> {
   const ai = getGemini();
 
@@ -86,9 +97,10 @@ async function runGroundedSearch(
         systemInstruction: BASE_SYSTEM,
         tools: [{ googleSearch: {} }],
         temperature: 0.3,
+        abortSignal: budget?.signal,
       },
     }),
-    undefined,
+    budget?.remaining(),
     'La búsqueda de proveedores',
   );
 
@@ -102,6 +114,7 @@ async function runGroundedSearch(
 async function structureFindings(
   description: string,
   findings: string,
+  budget?: RequestBudget,
 ): Promise<{ summary: string; offers: SupplierOffer[] }> {
   const ai = getGemini();
 
@@ -114,9 +127,10 @@ async function structureFindings(
         responseMimeType: 'application/json',
         responseSchema: offersResponseSchema,
         temperature: 0.1,
+        abortSignal: budget?.signal,
       },
     }),
-    undefined,
+    budget?.remaining(),
     'La estructuración de las ofertas',
   );
 
@@ -126,6 +140,7 @@ async function structureFindings(
 /** Respaldo cuando la herramienta de búsqueda no está disponible. */
 async function runKnowledgeOnlySearch(
   description: string,
+  budget?: RequestBudget,
 ): Promise<{ summary: string; offers: SupplierOffer[] }> {
   const ai = getGemini();
 
@@ -138,9 +153,10 @@ async function runKnowledgeOnlySearch(
         responseMimeType: 'application/json',
         responseSchema: offersResponseSchema,
         temperature: 0.4,
+        abortSignal: budget?.signal,
       },
     }),
-    undefined,
+    budget?.remaining(),
     'La búsqueda de proveedores',
   );
 

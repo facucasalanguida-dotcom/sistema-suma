@@ -1,5 +1,11 @@
 import type { Content, Part } from '@google/genai';
-import { VISION_MODEL, extractJson, getGemini, withTimeout } from './client';
+import {
+  VISION_MODEL,
+  extractJson,
+  getGemini,
+  withTimeout,
+  type RequestBudget,
+} from './client';
 import { MATERIAL_SYSTEM } from './prompts';
 import { materialRequestResponseSchema } from './schemas';
 import { materialRequestSchema, type ChatRequestPayload, type MaterialRequest } from '../types';
@@ -21,7 +27,10 @@ export const SUPPORTED_IMAGE_TYPES = [
  * Paso 2 del proceso: entiende qué material quiere el usuario a partir de su
  * texto y, si la hay, de la imagen adjunta.
  */
-export async function interpretMaterial(payload: ChatRequestPayload): Promise<MaterialRequest> {
+export async function interpretMaterial(
+  payload: ChatRequestPayload,
+  budget?: RequestBudget,
+): Promise<MaterialRequest> {
   const ai = getGemini();
 
   const parts: Part[] = [];
@@ -45,9 +54,10 @@ export async function interpretMaterial(payload: ChatRequestPayload): Promise<Ma
         responseMimeType: 'application/json',
         responseSchema: materialRequestResponseSchema,
         temperature: 0.2,
+        abortSignal: budget?.signal,
       },
     }),
-    undefined,
+    budget?.remaining(),
     'La interpretación del material',
   );
 

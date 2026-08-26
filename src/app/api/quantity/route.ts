@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { describeGeminiError, isGeminiConfigured } from '@/lib/gemini/client';
+import { createBudget, describeGeminiError, isGeminiConfigured } from '@/lib/gemini/client';
 import { buildFallbackQuestion, interpretQuantity } from '@/lib/gemini/quantity';
 import { PricingError, computeLinePrice } from '@/lib/pricing';
 import {
@@ -10,7 +10,7 @@ import {
 } from '@/lib/types';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+export const maxDuration = 30;
 
 /**
  * Pasos 5 y 6 del proceso: interpreta la cantidad que ha escrito el usuario y
@@ -32,9 +32,14 @@ export async function POST(request: Request) {
 
   const { offer, phrase, wastePct } = payload;
 
+  const budget = createBudget();
+
   let interpretation;
   try {
-    interpretation = await interpretQuantity(offer, phrase, { allowAi: isGeminiConfigured() });
+    interpretation = await interpretQuantity(offer, phrase, {
+      allowAi: isGeminiConfigured(),
+      budget,
+    });
   } catch (error) {
     console.error('[suma] error interpretando la cantidad:', error);
     return NextResponse.json(
@@ -44,6 +49,8 @@ export async function POST(request: Request) {
       },
       { status: 502 },
     );
+  } finally {
+    budget.release();
   }
 
   if (!interpretation.quantity) {

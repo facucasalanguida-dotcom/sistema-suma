@@ -1,4 +1,10 @@
-import { UTILITY_MODEL, extractJson, getGemini, withTimeout } from './client';
+import {
+  UTILITY_MODEL,
+  extractJson,
+  getGemini,
+  withTimeout,
+  type RequestBudget,
+} from './client';
 import { buildQuantitySystem } from './prompts';
 import { quantityResponseSchema } from './schemas';
 import { parseQuantity } from '../quantity-parser';
@@ -27,7 +33,7 @@ export interface QuantityInterpretation {
 export async function interpretQuantity(
   offer: SupplierOffer,
   phrase: string,
-  options: { allowAi?: boolean } = {},
+  options: { allowAi?: boolean; budget?: RequestBudget } = {},
 ): Promise<QuantityInterpretation> {
   const allowAi = options.allowAi ?? true;
 
@@ -68,9 +74,10 @@ export async function interpretQuantity(
         responseMimeType: 'application/json',
         responseSchema: quantityResponseSchema,
         temperature: 0.1,
+        abortSignal: options.budget?.signal,
       },
     }),
-    undefined,
+    options.budget?.remaining(),
     'La interpretación de la cantidad',
   );
 

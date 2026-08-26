@@ -57,8 +57,42 @@ export const SEARCH_MODEL = process.env.GEMINI_SEARCH_MODEL || 'gemini-3.6-flash
 /** Modelo para tareas cortas de estructuración y parseo. */
 export const UTILITY_MODEL = process.env.GEMINI_UTILITY_MODEL || 'gemini-3.6-flash';
 
-/** Tiempo máximo por llamada, para no dejar la interfaz colgada. */
-export const REQUEST_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS || 60_000);
+/**
+ * Presupuesto de tiempo para TODA una petición, no para cada llamada.
+ *
+ * Una búsqueda de proveedores encadena dos llamadas al modelo, así que un
+ * límite por llamada no acota nada: dos de 45 s suman 90 s. En un entorno sin
+ * servidor eso significa que la plataforma corta la función antes de que la
+ * aplicación pueda responder, y el usuario ve un error genérico de pasarela en
+ * lugar de un mensaje que le sirva. Con un presupuesto compartido, la última
+ * llamada sabe cuánto tiempo le queda y se rinde a tiempo de contarlo.
+ *
+ * El valor por defecto deja margen bajo el límite de 60 s de una función de
+ * Vercel en el plan gratuito.
+ */
+export const REQUEST_BUDGET_MS = Number(process.env.GEMINI_TIMEOUT_MS || 45_000);
+
+export interface RequestBudget {
+  /** Se aborta cuando se agota el presupuesto; se pasa al SDK. */
+  signal: AbortSignal;
+  /** Milisegundos que quedan. */
+  remaining: () => number;
+  /** Libera el temporizador. Llamar siempre, en un `finally`. */
+  release: () => void;
+}
+
+/** Crea el presupuesto de tiempo compartido por todas las llamadas de una petición. */
+export function createBudget(totalMs = REQUEST_BUDGET_MS): RequestBudget {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), totalMs);
+
+  return {
+    signal: controller.signal,
+    remaining: () => Math.max(0, totalMs - (Date.now() - startedAt)),
+    release: () => clearTimeout(timer),
+  };
+}
 
 /**
  * Extrae el JSON de una respuesta del modelo.
@@ -99,7 +133,7 @@ export function extractJson(raw: string | undefined): unknown {
 /** Envuelve una promesa con un tiempo límite legible para el usuario. */
 export async function withTimeout<T>(
   promise: Promise<T>,
-  ms = REQUEST_TIMEOUT_MS,
+  ms = REQUEST_BUDGET_MS,
   label = 'La consulta a la IA',
 ): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -130,6 +164,9 @@ export function describeGeminiError(error: unknown): string {
   }
   if (/timeout|tiempo máximo/i.test(message)) {
     return message;
+  }
+  if (/abort/i.test(message)) {
+    return 'La consulta ha tardado demasiado y se ha cancelado. Prueba a concretar más el material.';
   }
   if (/permission|403|PERMISSION_DENIED/i.test(message)) {
     return 'La clave de Gemini no tiene permiso para este modelo. Prueba a cambiar GEMINI_VISION_MODEL a gemini-flash-latest.';
