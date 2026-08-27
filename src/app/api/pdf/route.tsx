@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { BudgetDocument } from '@/pdf/BudgetDocument';
 import { DEFAULT_VAT_PCT, buildReference, computeTotals, validUntil } from '@/lib/pricing';
 import { supplierOfferSchema, type BudgetDocumentData, type BudgetLine } from '@/lib/types';
+import { requireApiSession } from '@/lib/auth/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -68,6 +69,9 @@ const bodySchema = z.object({
  * número que se pueda manipular desde el cliente.
  */
 export async function POST(request: Request) {
+  const denied = await requireApiSession();
+  if (denied) return denied;
+
   let body;
   try {
     body = bodySchema.parse(await request.json());

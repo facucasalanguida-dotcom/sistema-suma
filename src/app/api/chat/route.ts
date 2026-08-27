@@ -11,6 +11,7 @@ import { searchSuppliers } from '@/lib/gemini/suppliers';
 import { searchDemoCatalog } from '@/lib/demo/catalog';
 import { extractProductUrl } from '@/lib/import/product-page';
 import { chatRequestSchema, type ChatResponsePayload } from '@/lib/types';
+import { requireApiSession } from '@/lib/auth/guard';
 
 export const runtime = 'nodejs';
 // Límite de una función de Vercel en el plan gratuito. El presupuesto de
@@ -23,6 +24,9 @@ export const maxDuration = 60;
  * material se pide y devuelve las opciones de proveedores de Málaga.
  */
 export async function POST(request: Request) {
+  const denied = await requireApiSession();
+  if (denied) return denied;
+
   let payload;
   try {
     payload = chatRequestSchema.parse(await request.json());

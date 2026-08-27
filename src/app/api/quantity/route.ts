@@ -8,6 +8,7 @@ import {
   type QuantityResponsePayload,
   type SupplierOffer,
 } from '@/lib/types';
+import { requireApiSession } from '@/lib/auth/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -20,6 +21,9 @@ export const maxDuration = 30;
  * interviene para entender frases libres como «el salón y los dos dormitorios».
  */
 export async function POST(request: Request) {
+  const denied = await requireApiSession();
+  if (denied) return denied;
+
   let payload;
   try {
     payload = quantityRequestSchema.parse(await request.json());

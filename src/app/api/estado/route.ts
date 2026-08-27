@@ -8,6 +8,9 @@ import {
 } from '@/lib/gemini/client';
 import { isCseConfigured, searchProductPages } from '@/lib/search/google-cse';
 import { issuerIsPlaceholder } from '@/lib/brand';
+import { authIsConfigured, isDeployed } from '@/lib/auth/session';
+import { googleIsConfigured, loadUsers } from '@/lib/auth/users';
+import { requireApiSession } from '@/lib/auth/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -28,12 +31,16 @@ export const dynamic = 'force-dynamic';
  * una consulta del buscador: no es para refrescar en bucle.
  */
 export async function GET() {
+  const denied = await requireApiSession();
+  if (denied) return denied;
+
   const [gemini, busqueda] = await Promise.all([checkGemini(), checkCse()]);
 
   return NextResponse.json(
     {
       gemini,
       busquedaProgramatica: busqueda,
+      acceso: describeAuth(),
       datosDelEmisor: issuerIsPlaceholder
         ? {
             estado: 'pendiente',
@@ -125,4 +132,41 @@ async function checkCse() {
         'El buscador programático no responde. Revisa la clave y el ID en las variables de entorno.',
     };
   }
+}
+
+/** Cómo está montado el acceso, para poder verlo de un vistazo. */
+function describeAuth() {
+  const cuentas = loadUsers();
+  const compartida = Boolean(process.env.SUMA_ACCESS_PASSWORD);
+
+  if (authIsConfigured()) {
+    const conSegundoFactor = cuentas.filter((user) => user.totp).length;
+    return {
+      estado: cuentas.length > 0 ? 'ok' : 'sin-cuentas',
+      detalle:
+        cuentas.length > 0
+          ? `${cuentas.length} ${cuentas.length === 1 ? 'cuenta' : 'cuentas'}, ` +
+            `${conSegundoFactor} con segundo factor. ` +
+            `Acceso con Google ${googleIsConfigured() ? 'activado' : 'no configurado'}.`
+          : 'La clave de sesión está puesta pero no hay ninguna cuenta. ' +
+            'Crea la primera en /acceso/alta.',
+    };
+  }
+
+  if (compartida) {
+    return {
+      estado: 'basico',
+      detalle:
+        'Protegido con la contraseña compartida de siempre. Para tener cuentas ' +
+        'individuales con segundo factor, define SESSION_SECRET y crea la primera ' +
+        'cuenta en /acceso/alta.',
+    };
+  }
+
+  return {
+    estado: isDeployed() ? 'sin-configurar' : 'abierto-en-local',
+    detalle: isDeployed()
+      ? 'DESPLIEGUE SIN ACCESO: la aplicación no sirve nada hasta que se configure.'
+      : 'Sin puerta, como corresponde en local y en las pruebas.',
+  };
 }

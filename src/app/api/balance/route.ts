@@ -17,6 +17,7 @@ import {
   salariesTotalForProject,
 } from '@/lib/projects';
 import type { Project, SalaryPayment, Team } from '@/lib/types';
+import { requireApiSession } from '@/lib/auth/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -146,6 +147,9 @@ const MUTED = 'FF6B6B74';
 const EURO_FMT = '#,##0.00 "€"';
 
 export async function POST(request: Request) {
+  const denied = await requireApiSession();
+  if (denied) return denied;
+
   let body;
   try {
     body = bodySchema.parse(await request.json());

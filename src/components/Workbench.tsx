@@ -24,6 +24,7 @@ import { PaymentsSection } from '@/components/sections/PaymentsSection';
 import { ProjectsSection } from '@/components/sections/ProjectsSection';
 import { SalariesSection } from '@/components/sections/SalariesSection';
 import { SumaLogo } from '@/components/brand/SumaLogo';
+import { UserMenu } from '@/components/auth/UserMenu';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '@/lib/format';
@@ -53,7 +54,15 @@ const SECTIONS: Array<{ id: SectionId; label: string; short: string; icon: typeo
   { id: 'cobros', label: 'Cobros', short: 'Cobros', icon: HandCoins },
 ];
 
-export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
+interface WorkbenchProps {
+  aiEnabled: boolean;
+  /** Nombre de quien ha entrado, para la cabecera. */
+  usuario?: string;
+  /** `true` si ha entrado con Google, para decirlo en el menú. */
+  viaGoogle?: boolean;
+}
+
+export function Workbench({ aiEnabled, usuario, viaGoogle = false }: WorkbenchProps) {
   const messages = useBudgetStore((state) => state.messages);
   const lines = useBudgetStore((state) => state.lines);
   const laborLines = useBudgetStore((state) => state.laborLines);
@@ -180,6 +189,8 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
               <span className="hidden sm:inline">Nueva consulta</span>
             </Button>
           ) : null}
+
+          {usuario ? <UserMenu nombre={usuario} viaGoogle={viaGoogle} /> : null}
         </div>
       </header>
 

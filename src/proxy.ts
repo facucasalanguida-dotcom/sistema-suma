@@ -1,46 +1,146 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import {
+  SESSION_COOKIE,
+  authIsConfigured,
+  authMisconfigured,
+  verifySessionToken,
+} from '@/lib/auth/session';
 
 /**
- * Puerta de acceso opcional.
+ * Primera línea de defensa, en cada petición.
  *
- * Una vez desplegada, la aplicación queda en una URL pública y cualquiera que
- * la encuentre puede lanzar búsquedas que se facturan contra la clave de
- * Gemini de SUMA. No hay cuentas de usuario porque es una herramienta interna,
- * así que la protección más razonable es una contraseña compartida.
+ * Hace tres cosas:
  *
- * Se activa **sólo** si existe `SUMA_ACCESS_PASSWORD`. Sin esa variable el
- * proxy no hace nada y la aplicación funciona igual que en local, que es lo que
- * conviene mientras se prueba.
+ *  1. **Cabeceras de seguridad**, incluida una política de contenido estricta
+ *     con «nonce» por petición, que es lo que corta de raíz los ataques de
+ *     inyección de scripts.
+ *  2. **Comprobación de sesión** antes de que se renderice nada.
+ *  3. **Compatibilidad**: si todavía no se ha configurado el sistema de
+ *     cuentas, mantiene la contraseña compartida de siempre, para que nadie se
+ *     quede fuera de su propia herramienta durante la transición.
  *
- * Se usa autenticación básica de HTTP a propósito: el navegador enseña su
- * propio diálogo y recuerda las credenciales para todas las peticiones,
- * incluidas las de las rutas de API y la descarga del PDF, sin tener que
- * construir una pantalla de acceso ni gestionar sesiones.
+ * Ojo: esto NO es la única defensa. La documentación de Next.js avisa de que
+ * la comprobación del proxy es optimista y de que las decisiones de verdad
+ * deben tomarse junto a los datos; de eso se encarga `src/lib/auth/dal.ts`,
+ * que vuelve a verificar la sesión en cada página y en cada ruta de API.
  */
+
+/** Rutas que tienen que ser accesibles sin sesión, o no habría forma de entrar. */
+const PUBLIC_PATHS = ['/acceso', '/api/auth/'];
 
 const REALM = 'Presupuestos SUMA';
 
-export function proxy(request: NextRequest) {
-  const expected = process.env.SUMA_ACCESS_PASSWORD;
-  if (!expected) return NextResponse.next();
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  const header = request.headers.get('authorization') ?? '';
-  const [scheme, encoded] = header.split(' ');
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64');
+  const isDev = process.env.NODE_ENV === 'development';
 
-  if (scheme?.toLowerCase() === 'basic' && encoded) {
-    const decoded = safeDecode(encoded);
-    // El usuario da igual: lo que importa es la contraseña compartida.
-    const password = decoded.slice(decoded.indexOf(':') + 1);
-    if (constantTimeEquals(password, expected)) return NextResponse.next();
+  /*
+   * `strict-dynamic` hace que sólo se ejecuten los scripts que Next firma con
+   * el nonce de esta petición, y los que ellos carguen. Un script inyectado
+   * por un tercero no tiene nonce, así que el navegador no lo ejecuta.
+   *
+   * `style-src-attr 'unsafe-inline'` es necesario y seguro: React escribe
+   * atributos `style` en línea (barras de progreso, retardos de animación) y
+   * un atributo de estilo no puede ejecutar código.
+   */
+  const csp = [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
+    `style-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-inline'" : ''}`,
+    "style-src-attr 'unsafe-inline'",
+    "img-src 'self' blob: data:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    'upgrade-insecure-requests',
+  ].join('; ');
+
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Content-Security-Policy', csp);
+
+  const allow = () => {
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
+    response.headers.set('Content-Security-Policy', csp);
+    return response;
+  };
+
+  /* ── Sistema de cuentas configurado ─────────────────────────────────── */
+  if (authIsConfigured()) {
+    if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path))) {
+      return allow();
+    }
+
+    const session = await verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value);
+    if (session) return allow();
+
+    // Las rutas de API contestan en JSON: devolver HTML de una pantalla de
+    // acceso rompería al cliente que esperaba datos.
+    if (pathname.startsWith('/api/')) {
+      const response = NextResponse.json(
+        { error: 'Tu sesión ha caducado. Vuelve a entrar.' },
+        { status: 401 },
+      );
+      response.headers.set('Content-Security-Policy', csp);
+      return response;
+    }
+
+    const login = new URL('/acceso', request.url);
+    if (pathname !== '/') login.searchParams.set('error', 'sesion-caducada');
+    const response = NextResponse.redirect(login);
+    response.headers.set('Content-Security-Policy', csp);
+    return response;
   }
 
-  return new NextResponse('Acceso restringido al equipo de SUMA.', {
-    status: 401,
-    headers: {
-      'WWW-Authenticate': `Basic realm="${REALM}", charset="UTF-8"`,
-      'Content-Type': 'text/plain; charset=utf-8',
-    },
-  });
+  /* ── Todavía con la contraseña compartida de siempre ─────────────────── */
+  const shared = process.env.SUMA_ACCESS_PASSWORD;
+  if (shared) {
+    const header = request.headers.get('authorization') ?? '';
+    const [scheme, encoded] = header.split(' ');
+
+    if (scheme?.toLowerCase() === 'basic' && encoded) {
+      const decoded = safeDecode(encoded);
+      const password = decoded.slice(decoded.indexOf(':') + 1);
+      if (constantTimeEquals(password, shared)) return allow();
+    }
+
+    return new NextResponse('Acceso restringido al equipo de SUMA.', {
+      status: 401,
+      headers: {
+        'WWW-Authenticate': `Basic realm="${REALM}", charset="UTF-8"`,
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Content-Security-Policy': csp,
+      },
+    });
+  }
+
+  /* ── Desplegado pero sin ninguna puerta ──────────────────────────────── */
+  if (authMisconfigured()) {
+    // Antes esto dejaba pasar a cualquiera. Una variable olvidada en el
+    // despliegue no puede traducirse en una aplicación abierta al mundo con
+    // una clave de IA de pago detrás: se cierra y se explica qué falta.
+    return new NextResponse(
+      'Este sistema todavía no tiene configurado el acceso.\n\n' +
+        'Define SESSION_SECRET (y crea la primera cuenta en /acceso/alta) o, ' +
+        'de momento, SUMA_ACCESS_PASSWORD.',
+      {
+        status: 503,
+        headers: {
+          'Content-Type': 'text/plain; charset=utf-8',
+          'Cache-Control': 'no-store',
+          'Content-Security-Policy': csp,
+        },
+      },
+    );
+  }
+
+  // Sin nada configurado y sin desplegar: desarrollo local y pruebas.
+  return allow();
 }
 
 function safeDecode(value: string): string {

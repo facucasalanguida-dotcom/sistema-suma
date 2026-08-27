@@ -11,6 +11,7 @@ import { buildLaborSystem } from '@/lib/gemini/prompts';
 import { laborResponseSchema } from '@/lib/gemini/schemas';
 import { normalizeLaborResponse, parseLaborOffline } from '@/lib/labor';
 import type { LaborLine } from '@/lib/types';
+import { requireApiSession } from '@/lib/auth/guard';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -30,6 +31,9 @@ export interface LaborResponsePayload {
  * clave; con un intérprete sencillo (una partida por línea con importe) si no.
  */
 export async function POST(request: Request) {
+  const denied = await requireApiSession();
+  if (denied) return denied;
+
   let body;
   try {
     body = bodySchema.parse(await request.json());
