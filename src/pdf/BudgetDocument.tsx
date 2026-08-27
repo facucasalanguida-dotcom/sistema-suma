@@ -268,7 +268,7 @@ export interface BudgetDocumentProps {
 }
 
 export function BudgetDocument({ data }: BudgetDocumentProps) {
-  const { client, lines, totals } = data;
+  const { client, lines, laborLines, totals } = data;
 
   return (
     <Document
@@ -405,8 +405,56 @@ export function BudgetDocument({ data }: BudgetDocumentProps) {
           );
         })}
 
+        {laborLines.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>MANO DE OBRA</Text>
+
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, styles.colIndex]}>Nº</Text>
+              <Text style={[styles.tableHeaderCell, styles.colDescription, { flexGrow: 1 }]}>
+                CONCEPTO
+              </Text>
+              <Text style={[styles.tableHeaderCell, styles.colAmount]}>IMPORTE</Text>
+            </View>
+
+            {laborLines.map((laborLine, index) => (
+              <View
+                key={laborLine.id}
+                style={[styles.row, ...(index % 2 === 1 ? [styles.rowAlt] : [])]}
+                wrap={false}
+              >
+                <Text style={[styles.cellNumber, styles.colIndex]}>{lines.length + index + 1}</Text>
+                <View style={[styles.colDescription, { flexGrow: 1 }]}>
+                  <Text style={styles.productName}>{pdfText(laborLine.description)}</Text>
+                  {laborLine.detail ? (
+                    <Text style={styles.productMeta}>{pdfText(laborLine.detail)}</Text>
+                  ) : null}
+                </View>
+                <Text style={[styles.cellAmount, styles.colAmount]}>
+                  {formatCurrency(laborLine.amount)}
+                </Text>
+              </View>
+            ))}
+          </>
+        ) : null}
+
         <View style={styles.totalsWrapper} wrap={false}>
           <View style={styles.totals}>
+            {totals.laborTotal > 0 ? (
+              <>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Materiales</Text>
+                  <Text style={styles.totalValue}>
+                    {formatCurrency(totals.materialsSubtotal)}
+                  </Text>
+                </View>
+                <View style={styles.totalRow}>
+                  <Text style={styles.totalLabel}>Mano de obra</Text>
+                  <Text style={styles.totalValue}>{formatCurrency(totals.laborTotal)}</Text>
+                </View>
+              </>
+            ) : null}
+
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Suma de partidas</Text>
               <Text style={styles.totalValue}>{formatCurrency(totals.subtotal)}</Text>

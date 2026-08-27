@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { FileDown, Info, Package, Trash2 } from 'lucide-react';
+import { FileDown, HardHat, Info, Package, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatPrecise } from '@/lib/format';
-import type { BudgetLine, BudgetTotals } from '@/lib/types';
+import type { BudgetLine, BudgetTotals, LaborLine } from '@/lib/types';
 import { measureLabel, saleUnitLabel } from '@/lib/units';
 import { cn } from '@/lib/cn';
 
@@ -16,9 +16,13 @@ import { cn } from '@/lib/cn';
 
 interface BudgetPanelProps {
   lines: BudgetLine[];
+  laborLines: LaborLine[];
   totals: BudgetTotals;
   onRemove: (id: string) => void;
+  onRemoveLabor: (id: string) => void;
   onClear: () => void;
+  /** Abre el paso de mano de obra, previo a finalizar. */
+  onLabor: () => void;
   onFinalize: () => void;
   busy: boolean;
   className?: string;
@@ -26,9 +30,12 @@ interface BudgetPanelProps {
 
 export function BudgetPanel({
   lines,
+  laborLines,
   totals,
   onRemove,
+  onRemoveLabor,
   onClear,
+  onLabor,
   onFinalize,
   busy,
   className,
@@ -68,19 +75,61 @@ export function BudgetPanel({
       </header>
 
       <div className="suma-scroll min-h-0 flex-1 overflow-y-auto">
-        {lines.length === 0 ? (
+        {lines.length === 0 && laborLines.length === 0 ? (
           <EmptyState />
         ) : (
-          <ol className="divide-y divide-suma-border-soft">
-            {lines.map((line, index) => (
-              <BudgetLineRow key={line.id} line={line} index={index} onRemove={onRemove} />
-            ))}
-          </ol>
+          <>
+            <ol className="divide-y divide-suma-border-soft">
+              {lines.map((line, index) => (
+                <BudgetLineRow key={line.id} line={line} index={index} onRemove={onRemove} />
+              ))}
+            </ol>
+
+            {laborLines.length > 0 ? (
+              <div className="border-t-2 border-suma-border">
+                <p className="flex items-center gap-1.5 bg-suma-canvas px-4 py-2 text-[11px] font-bold tracking-wide text-suma-muted uppercase">
+                  <HardHat className="size-3.5" aria-hidden />
+                  Mano de obra
+                </p>
+                <ul className="divide-y divide-suma-border-soft">
+                  {laborLines.map((laborLine) => (
+                    <li key={laborLine.id} className="group flex items-start gap-2 px-4 py-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] leading-snug font-semibold text-suma-ink">
+                          {laborLine.description}
+                        </p>
+                        {laborLine.detail ? (
+                          <p className="mt-0.5 text-[11px] text-suma-muted">{laborLine.detail}</p>
+                        ) : null}
+                      </div>
+                      <span className="text-sm font-bold text-suma-ink tabular-nums">
+                        {formatCurrency(laborLine.amount)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveLabor(laborLine.id)}
+                        className="rounded-md p-1 text-suma-muted opacity-0 transition-opacity group-hover:opacity-100 hover:bg-suma-red-tint hover:text-suma-danger focus-visible:opacity-100"
+                        aria-label={`Quitar «${laborLine.description}»`}
+                      >
+                        <Trash2 className="size-3.5" aria-hidden />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </>
         )}
       </div>
 
       <footer className="border-t border-suma-border bg-suma-canvas px-4 py-4">
         <dl className="flex flex-col gap-1.5 text-sm">
+          {totals.laborTotal > 0 ? (
+            <>
+              <Row label="Materiales" value={formatCurrency(totals.materialsSubtotal)} />
+              <Row label="Mano de obra" value={formatCurrency(totals.laborTotal)} />
+            </>
+          ) : null}
           <Row label="Suma de partidas" value={formatCurrency(totals.subtotal)} />
           {totals.discountPct > 0 ? (
             <Row
@@ -109,17 +158,32 @@ export function BudgetPanel({
           </p>
         ) : null}
 
-        <Button
-          variant="primary"
-          size="lg"
-          className="mt-3 w-full"
-          disabled={lines.length === 0}
-          loading={busy}
-          onClick={onFinalize}
-          icon={<FileDown className="size-4" aria-hidden />}
-        >
-          Finalizar presupuesto
-        </Button>
+        <div className="mt-3 flex flex-col gap-2">
+          <Button
+            variant="neutral"
+            size="md"
+            className="w-full"
+            disabled={lines.length === 0}
+            onClick={onLabor}
+            icon={<HardHat className="size-4" aria-hidden />}
+          >
+            {laborLines.length > 0
+              ? `Mano de obra (${laborLines.length})`
+              : 'Añadir mano de obra'}
+          </Button>
+
+          <Button
+            variant="primary"
+            size="lg"
+            className="w-full"
+            disabled={lines.length === 0}
+            loading={busy}
+            onClick={onFinalize}
+            icon={<FileDown className="size-4" aria-hidden />}
+          >
+            Finalizar presupuesto
+          </Button>
+        </div>
       </footer>
     </aside>
   );

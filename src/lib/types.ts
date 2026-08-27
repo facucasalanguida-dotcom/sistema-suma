@@ -168,7 +168,11 @@ export interface ClientDetails {
 }
 
 export interface BudgetTotals {
-  /** Suma de los importes de línea. */
+  /** Importe de los materiales, sin IVA. */
+  materialsSubtotal: number;
+  /** Importe de la mano de obra, sin IVA. */
+  laborTotal: number;
+  /** Materiales + mano de obra. */
   subtotal: number;
   discountPct: number;
   discountAmount: number;
@@ -179,12 +183,100 @@ export interface BudgetTotals {
   total: number;
 }
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Mano de obra                                                               */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/** Partida de mano de obra, interpretada por la IA a partir de texto libre. */
+export interface LaborLine {
+  id: string;
+  /** Concepto («Alicatado del baño», «Instalación eléctrica»). */
+  description: string;
+  /** Detalle del cálculo («2 oficiales × 5 días × 120 €/día»). */
+  detail: string | null;
+  /** Importe sin IVA, en euros. */
+  amount: number;
+}
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Proyectos: presupuestos guardados, pagos, cobros y salarios               */
+/* ────────────────────────────────────────────────────────────────────────── */
+
+/** Fotografía de un presupuesto terminado, guardada dentro de un proyecto. */
+export interface SavedBudget {
+  id: string;
+  reference: string;
+  savedAt: string;
+  clientName: string;
+  lines: BudgetLine[];
+  laborLines: LaborLine[];
+  discountPct: number;
+  vatPct: number;
+  notes: string;
+  totals: BudgetTotals;
+}
+
+/** Pago manual a un proveedor o gasto de material fuera del presupuesto. */
+export interface SupplierPayment {
+  id: string;
+  concept: string;
+  supplier: string | null;
+  amount: number;
+  date: string;
+}
+
+/** Cobro recibido del cliente del proyecto. */
+export interface CollectionEntry {
+  id: string;
+  amount: number;
+  date: string;
+  note: string | null;
+}
+
+/** Una obra: la carpeta donde viven sus presupuestos, pagos y cobros. */
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: string;
+  budgets: SavedBudget[];
+  /** Ids de partidas de material ya pagadas (tachadas en «Pagos»). */
+  paidLineIds: string[];
+  extraPayments: SupplierPayment[];
+  collections: CollectionEntry[];
+}
+
+export interface Employee {
+  id: string;
+  name: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  employees: Employee[];
+}
+
+/** Pago de salario registrado a un empleado. */
+export interface SalaryPayment {
+  id: string;
+  employeeId: string;
+  /** Nombre en el momento del pago, por si el empleado se renombra o borra. */
+  employeeName: string;
+  teamId: string;
+  /** Proyecto al que se imputa el pago, si se indica. */
+  projectId: string | null;
+  amount: number;
+  date: string;
+  note: string | null;
+}
+
 export interface BudgetDocumentData {
   reference: string;
   issuedAt: string;
   validUntil: string;
   client: ClientDetails;
   lines: BudgetLine[];
+  laborLines: LaborLine[];
   totals: BudgetTotals;
   notes: string;
   /** `true` si alguna línea usó precios del catálogo de demostración. */

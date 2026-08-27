@@ -11,6 +11,7 @@ import { multiplyMoney, percentOf, round2, round3, sumMoney } from './format';
 import type {
   BudgetLine,
   BudgetTotals,
+  LaborLine,
   PriceBreakdown,
   QuantityInput,
   SupplierOffer,
@@ -205,21 +206,40 @@ function fmtEur(value: number): string {
   }).format(value);
 }
 
-/** Totaliza el presupuesto: base imponible, descuento, IVA y total. */
+/** Suma de las partidas de mano de obra, en céntimos exactos. */
+export function laborTotalOf(laborLines: Array<Pick<LaborLine, 'amount'>>): number {
+  return sumMoney(laborLines.map((line) => line.amount));
+}
+
+/**
+ * Totaliza el presupuesto: materiales + mano de obra, descuento, IVA y total.
+ */
 export function computeTotals(
   lines: BudgetLine[],
-  options: { discountPct?: number; vatPct?: number } = {},
+  options: { discountPct?: number; vatPct?: number; laborLines?: LaborLine[] } = {},
 ): BudgetTotals {
   const discountPct = clampPct(options.discountPct ?? 0);
   const vatPct = clampPct(options.vatPct ?? DEFAULT_VAT_PCT);
 
-  const subtotal = sumMoney(lines.map((line) => line.breakdown.lineTotal));
+  const materialsSubtotal = sumMoney(lines.map((line) => line.breakdown.lineTotal));
+  const laborTotal = laborTotalOf(options.laborLines ?? []);
+  const subtotal = sumMoney([materialsSubtotal, laborTotal]);
   const discountAmount = percentOf(subtotal, discountPct);
   const taxableBase = round2(subtotal - discountAmount);
   const vatAmount = percentOf(taxableBase, vatPct);
   const total = sumMoney([taxableBase, vatAmount]);
 
-  return { subtotal, discountPct, discountAmount, taxableBase, vatPct, vatAmount, total };
+  return {
+    materialsSubtotal,
+    laborTotal,
+    subtotal,
+    discountPct,
+    discountAmount,
+    taxableBase,
+    vatPct,
+    vatAmount,
+    total,
+  };
 }
 
 function clampPct(value: number): number {

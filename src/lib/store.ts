@@ -8,6 +8,7 @@ import type {
   ChatMessage,
   ChatResponsePayload,
   ClientDetails,
+  LaborLine,
   QuantityResponsePayload,
   SupplierOffer,
 } from './types';
@@ -23,6 +24,8 @@ export type AssistantStatus =
 interface BudgetState {
   messages: ChatMessage[];
   lines: BudgetLine[];
+  /** Partidas de mano de obra del presupuesto en curso. */
+  laborLines: LaborLine[];
   /** Oferta a la espera de que el usuario indique la cantidad (paso 5). */
   pendingOffer: SupplierOffer | null;
   pendingMessageId: string | null;
@@ -39,13 +42,16 @@ interface BudgetState {
   submitQuantity: (phrase: string, wastePct?: number | null) => Promise<void>;
   removeLine: (id: string) => void;
   updateLineNote: (id: string, note: string) => void;
+  addLaborLines: (lines: LaborLine[]) => void;
+  removeLaborLine: (id: string) => void;
   clearBudget: () => void;
   resetConversation: () => void;
   setClient: (client: Partial<ClientDetails>) => void;
   setDiscountPct: (value: number) => void;
   setVatPct: (value: number) => void;
   setNotes: (value: string) => void;
-  downloadPdf: () => Promise<void>;
+  /** Devuelve la referencia del presupuesto generado, o null si falló. */
+  downloadPdf: () => Promise<string | null>;
   setHasHydrated: (value: boolean) => void;
 }
 
@@ -96,6 +102,7 @@ export const useBudgetStore = create<BudgetState>()(
     (set, get) => ({
       messages: [WELCOME],
       lines: [],
+      laborLines: [],
       pendingOffer: null,
       pendingMessageId: null,
       client: EMPTY_CLIENT,
@@ -304,8 +311,25 @@ export const useBudgetStore = create<BudgetState>()(
         }));
       },
 
+      addLaborLines(newLines) {
+        if (newLines.length === 0) return;
+        set((state) => ({
+          // Ids únicos aunque la IA repita los suyos entre llamadas.
+          laborLines: [
+            ...state.laborLines,
+            ...newLines.map((line) => ({ ...line, id: `${line.id}-${id().slice(0, 8)}` })),
+          ],
+        }));
+      },
+
+      removeLaborLine(laborId) {
+        set((state) => ({
+          laborLines: state.laborLines.filter((line) => line.id !== laborId),
+        }));
+      },
+
       clearBudget() {
-        set({ lines: [] });
+        set({ lines: [], laborLines: [] });
       },
 
       resetConversation() {
@@ -340,7 +364,7 @@ export const useBudgetStore = create<BudgetState>()(
       /* Paso 7: se genera y descarga el PDF. */
       async downloadPdf() {
         const state = get();
-        if (state.lines.length === 0 || state.status !== 'idle') return;
+        if (state.lines.length === 0 || state.status !== 'idle') return null;
 
         set({ status: 'generando-pdf' });
 
@@ -350,6 +374,7 @@ export const useBudgetStore = create<BudgetState>()(
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               lines: state.lines,
+              laborLines: state.laborLines,
               client: state.client,
               discountPct: state.discountPct,
               vatPct: state.vatPct,
@@ -375,6 +400,9 @@ export const useBudgetStore = create<BudgetState>()(
           anchor.remove();
           URL.revokeObjectURL(url);
 
+          // «Presupuesto-SUMA-PRE-2026-0417.pdf» -> «PRE-2026-0417».
+          const reference = fileName.replace(/^Presupuesto-SUMA-/, '').replace(/\.pdf$/, '');
+
           set((current) => ({
             status: 'idle',
             messages: [
@@ -388,6 +416,8 @@ export const useBudgetStore = create<BudgetState>()(
               },
             ],
           }));
+
+          return reference;
         } catch (error) {
           set((current) => ({
             status: 'idle',
@@ -402,6 +432,7 @@ export const useBudgetStore = create<BudgetState>()(
               },
             ],
           }));
+          return null;
         }
       },
     }),
@@ -420,6 +451,7 @@ export const useBudgetStore = create<BudgetState>()(
             : message,
         ),
         lines: state.lines,
+        laborLines: state.laborLines,
         client: state.client,
         discountPct: state.discountPct,
         vatPct: state.vatPct,

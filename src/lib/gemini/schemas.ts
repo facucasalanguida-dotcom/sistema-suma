@@ -271,3 +271,42 @@ export const quantityResponseSchema: Schema = {
   required: ['understood', 'value', 'unit', 'wastePct', 'clarification', 'reasoning'],
   propertyOrdering: ['understood', 'value', 'unit', 'wastePct', 'clarification', 'reasoning'],
 };
+
+/** Interpretación de los gastos de mano de obra descritos por el usuario. */
+export const laborResponseSchema = {
+  type: Type.OBJECT,
+  properties: {
+    summary: {
+      type: Type.STRING,
+      description:
+        'Resumen en una o dos frases de la mano de obra interpretada, dirigido al usuario.',
+    },
+    lines: {
+      type: Type.ARRAY,
+      description: 'Partidas de mano de obra deducidas del texto del usuario.',
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          description: {
+            type: Type.STRING,
+            description: 'Concepto del trabajo («Alicatado del baño», «Instalación eléctrica»).',
+          },
+          detail: {
+            type: Type.STRING,
+            description:
+              'Desglose del cálculo tal y como lo dio el usuario («2 oficiales × 5 días × 120 €/día»). Vacío si el usuario dio el importe directamente.',
+          },
+          amount: {
+            type: Type.NUMBER,
+            description:
+              'Importe TOTAL en euros de esta partida, sin IVA. Si el usuario dio jornales y días, multiplícalos y muestra la operación en detail.',
+          },
+        },
+        required: ['description', 'detail', 'amount'],
+        propertyOrdering: ['description', 'detail', 'amount'],
+      },
+    },
+  },
+  required: ['summary', 'lines'],
+  propertyOrdering: ['summary', 'lines'],
+};

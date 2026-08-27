@@ -257,6 +257,15 @@ export function FinalizeDialog({
               Resumen
             </h3>
             <dl className="flex flex-col gap-1 text-sm">
+              {totals.laborTotal > 0 ? (
+                <>
+                  <SummaryRow
+                    label="Materiales"
+                    value={formatCurrency(totals.materialsSubtotal)}
+                  />
+                  <SummaryRow label="Mano de obra" value={formatCurrency(totals.laborTotal)} />
+                </>
+              ) : null}
               <SummaryRow label="Suma de partidas" value={formatCurrency(totals.subtotal)} />
               {totals.discountPct > 0 ? (
                 <SummaryRow

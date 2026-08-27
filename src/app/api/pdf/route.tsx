@@ -34,6 +34,16 @@ const bodySchema = z.object({
       }),
     )
     .min(1, 'El presupuesto no tiene ninguna partida.'),
+  laborLines: z
+    .array(
+      z.object({
+        id: z.string(),
+        description: z.string(),
+        detail: z.string().nullable().default(null),
+        amount: z.number().nonnegative(),
+      }),
+    )
+    .default([]),
   client: z.object({
     name: z.string().default(''),
     taxId: z.string().default(''),
@@ -77,7 +87,12 @@ export async function POST(request: Request) {
     validUntil: validUntil(issuedAt).toISOString(),
     client: body.client,
     lines,
-    totals: computeTotals(lines, { discountPct: body.discountPct, vatPct: body.vatPct }),
+    laborLines: body.laborLines,
+    totals: computeTotals(lines, {
+      discountPct: body.discountPct,
+      vatPct: body.vatPct,
+      laborLines: body.laborLines,
+    }),
     notes: body.notes.trim(),
     containsEstimates: lines.some((line) => line.offer.confidence === 'estimada'),
   };

@@ -5,7 +5,23 @@ import { describe, expect, it } from 'vitest';
 import { BudgetDocument } from '@/pdf/BudgetDocument';
 import { searchDemoCatalog } from '@/lib/demo/catalog';
 import { buildReference, computeLinePrice, computeTotals, validUntil } from '@/lib/pricing';
-import type { BudgetDocumentData, BudgetLine } from '@/lib/types';
+import type { BudgetDocumentData, BudgetLine, LaborLine } from '@/lib/types';
+
+/** Mano de obra de muestra, para comprobar que su bloque también se imprime. */
+const LABOR_LINES: LaborLine[] = [
+  {
+    id: 'labor-1',
+    description: 'Albañilería: alicatado y solado',
+    detail: '2 oficiales × 5 días × 120 €/día',
+    amount: 1200,
+  },
+  {
+    id: 'labor-2',
+    description: 'Instalación eléctrica',
+    detail: null,
+    amount: 640,
+  },
+];
 
 function sampleBudget(): BudgetDocumentData {
   const picks: Array<[string, number, 'm2' | 'm' | 'kg' | 'ud' | 'm3']> = [
@@ -47,7 +63,8 @@ function sampleBudget(): BudgetDocumentData {
       siteAddress: 'Urbanización Los Álamos, parcela 12 · 29631 Benalmádena',
     },
     lines,
-    totals: computeTotals(lines, { discountPct: 5, vatPct: 21 }),
+    laborLines: LABOR_LINES,
+    totals: computeTotals(lines, { discountPct: 5, vatPct: 21, laborLines: LABOR_LINES }),
     notes:
       'Los plazos de entrega se confirmarán al formalizar el pedido. No se incluye la retirada de escombros.',
     containsEstimates: lines.some((line) => line.offer.confidence === 'estimada'),
@@ -100,6 +117,7 @@ describe('PDF del presupuesto', () => {
         siteAddress: '',
       },
       lines: [line],
+      laborLines: [],
       totals: computeTotals([line]),
       notes: '',
       containsEstimates: false,

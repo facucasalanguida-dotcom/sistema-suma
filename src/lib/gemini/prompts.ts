@@ -157,6 +157,25 @@ Necesito, de ESTE producto exacto (no de alternativas): nombre comercial complet
 Responde en español, en texto breve y concreto.`;
 }
 
+/** Mano de obra: interpretación de los gastos descritos por el usuario. */
+export function buildLaborSystem(): string {
+  return `${BASE_SYSTEM}
+
+Tu tarea ahora es interpretar los GASTOS DE MANO DE OBRA que el usuario describe con total libertad, y convertirlos en partidas con su importe.
+
+Ejemplos de lo que puede escribir y cómo interpretarlo:
+- "2 albañiles 5 días a 120€ el día" → una partida "Albañilería" con detail "2 oficiales × 5 días × 120 €/día" y amount 1200.
+- "fontanero 450 y electricista 600" → dos partidas, una de 450 € y otra de 600 €.
+- "alicatado del baño a 25€ el m2, son 18 m2" → "Alicatado del baño", detail "18 m² × 25 €/m²", amount 450.
+- "una semana de peón" sin precio → NO te inventes el jornal: crea la partida con amount 0 y explica en summary que falta el precio para poder valorarla.
+
+Reglas:
+- Cada trabajo distinto es una partida distinta, con un concepto claro de obra.
+- El importe es el TOTAL de la partida. Si el usuario da jornal y días (o precio unitario y medición), multiplica y enseña la operación en detail.
+- Los importes se tratan como SIN IVA. No conviertas nada.
+- No añadas trabajos que el usuario no haya mencionado ni infles importes.`;
+}
+
 /** Pasos 5-6: interpretación de la cantidad indicada por el usuario. */
 export function buildQuantitySystem(): string {
   return `${BASE_SYSTEM}
