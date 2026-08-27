@@ -74,3 +74,22 @@ describe('esquemas de respuesta para Gemini', () => {
     }
   });
 });
+
+describe('reparto de tiempo de la búsqueda', () => {
+  it('limita el grounding a 25 s aunque sobre presupuesto', async () => {
+    const { groundedSearchCap } = await import('@/lib/gemini/suppliers');
+    expect(groundedSearchCap(50_000)).toBe(25_000);
+  });
+
+  it('con menos presupuesto, reserva siempre tiempo para estructurar', async () => {
+    const { groundedSearchCap } = await import('@/lib/gemini/suppliers');
+    // 30 s totales - 18 s de reserva = 12 s para el grounding.
+    expect(groundedSearchCap(30_000)).toBe(12_000);
+  });
+
+  it('si no hay hueco digno, salta el grounding directamente', async () => {
+    const { groundedSearchCap } = await import('@/lib/gemini/suppliers');
+    expect(groundedSearchCap(24_000)).toBeNull();
+    expect(groundedSearchCap(10_000)).toBeNull();
+  });
+});

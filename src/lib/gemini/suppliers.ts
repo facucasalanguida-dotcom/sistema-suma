@@ -23,6 +23,25 @@ import {
 } from '../types';
 import { isMeasureUnit, isSaleUnit, saleUnitAsMeasure } from '../units';
 
+/**
+ * Reparto del tiempo dentro de una búsqueda.
+ *
+ * El grounding es el paso lento y prescindible (hay plan B); estructurar es
+ * rápido e imprescindible. Así que el grounding recibe como mucho 25 s y
+ * siempre se le reserva tiempo al estructurado; si ni siquiera hay hueco
+ * digno para el grounding, se salta directamente.
+ */
+const GROUNDED_CAP_MS = 25_000;
+const STRUCTURE_RESERVE_MS = 18_000;
+const GROUNDED_MIN_WORTH_MS = 8_000;
+const STRUCTURE_CAP_MS = 20_000;
+
+/** Tope para la llamada con grounding, o `null` si no merece la pena lanzarla. */
+export function groundedSearchCap(remainingMs: number): number | null {
+  const cap = Math.min(GROUNDED_CAP_MS, remainingMs - STRUCTURE_RESERVE_MS);
+  return cap >= GROUNDED_MIN_WORTH_MS ? cap : null;
+}
+
 export interface SupplierSearchResult {
   summary: string;
   offers: SupplierOffer[];
@@ -51,11 +70,15 @@ export async function searchSuppliers(
   //  - la búsqueda programática con la API oficial de Google Custom Search,
   //    que aporta más fichas de producto con URL literal. Cada una puede
   //    fallar sin arrastrar a la otra.
+  const cap = groundedSearchCap(budget?.remaining() ?? GROUNDED_CAP_MS + STRUCTURE_RESERVE_MS);
+
   const [grounded, cseResults] = await Promise.all([
-    runGroundedSearch(description, request.searchQueries, budget).catch((error) => {
-      console.warn('[suma] búsqueda anclada no disponible:', error);
-      return null;
-    }),
+    cap === null
+      ? Promise.resolve(null)
+      : runGroundedSearch(description, request.searchQueries, budget, cap).catch((error) => {
+          console.warn('[suma] búsqueda anclada no disponible:', error);
+          return null;
+        }),
     searchProductPages(
       request.searchQueries.length > 0
         ? request.searchQueries
@@ -107,7 +130,8 @@ export async function searchSuppliers(
 async function runGroundedSearch(
   description: string,
   queries: string[],
-  budget?: RequestBudget,
+  budget: RequestBudget | undefined,
+  capMs: number,
 ): Promise<{ text: string; sources: GroundingSource[] }> {
   const response = await callGemini(
     {
@@ -121,6 +145,7 @@ async function runGroundedSearch(
     },
     budget,
     'La búsqueda de proveedores',
+    capMs,
   );
 
   const text = response.text?.trim() ?? '';
@@ -148,6 +173,7 @@ async function structureFindings(
     },
     budget,
     'La estructuración de las ofertas',
+    STRUCTURE_CAP_MS,
   );
 
   return normalizeOffersResponse(extractJson(response.text));
@@ -171,6 +197,7 @@ async function runKnowledgeOnlySearch(
     },
     budget,
     'La búsqueda de proveedores',
+    STRUCTURE_CAP_MS,
   );
 
   return normalizeOffersResponse(extractJson(response.text));

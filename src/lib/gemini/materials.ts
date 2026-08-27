@@ -50,6 +50,7 @@ export async function interpretMaterial(
     },
     budget,
     'La interpretación del material',
+    12_000,
   );
 
   return normalizeMaterialResponse(extractJson(response.text), payload);

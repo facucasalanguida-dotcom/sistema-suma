@@ -67,10 +67,10 @@ export const UTILITY_MODEL = process.env.GEMINI_UTILITY_MODEL || 'gemini-3.6-fla
  * lugar de un mensaje que le sirva. Con un presupuesto compartido, la última
  * llamada sabe cuánto tiempo le queda y se rinde a tiempo de contarlo.
  *
- * El valor por defecto deja margen bajo el límite de 60 s de una función de
- * Vercel en el plan gratuito.
+ * El valor por defecto (50 s) deja margen bajo el límite de 60 s de una
+ * función de Vercel en el plan gratuito.
  */
-export const REQUEST_BUDGET_MS = Number(process.env.GEMINI_TIMEOUT_MS || 45_000);
+export const REQUEST_BUDGET_MS = Number(process.env.GEMINI_TIMEOUT_MS || 50_000);
 
 export interface RequestBudget {
   /** Se aborta cuando se agota el presupuesto; se pasa al SDK. */
@@ -193,10 +193,18 @@ export async function callGemini(
   params: GeminiCallParams,
   budget: { signal: AbortSignal; remaining: () => number } | undefined,
   label: string,
+  /**
+   * Tope propio de esta llamada, además del presupuesto global. Sin él, un
+   * paso lento (la búsqueda con grounding puede pasar de 40 s) se come el
+   * presupuesto entero y no deja tiempo ni para el plan B: mejor cortar ese
+   * paso a tiempo y responder por el camino alternativo.
+   */
+  capMs?: number,
 ) {
   const ai = getGemini();
 
   for (let attempt = 0; ; attempt += 1) {
+    const remaining = budget?.remaining() ?? Number.MAX_SAFE_INTEGER;
     try {
       return await withTimeout(
         ai.models.generateContent({
@@ -204,7 +212,7 @@ export async function callGemini(
           contents: params.contents,
           config: { ...params.config, abortSignal: budget?.signal },
         }),
-        budget?.remaining(),
+        Math.min(remaining, capMs ?? Number.MAX_SAFE_INTEGER),
         label,
       );
     } catch (error) {
