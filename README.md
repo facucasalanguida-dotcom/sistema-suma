@@ -141,7 +141,7 @@ Para usar la tipografía corporativa basta con registrarla con `Font.register`.
 ## Pruebas
 
 ```bash
-npm test          # 77 pruebas unitarias: unidades, aritmética, catálogo, PDF, acceso
+npm test          # pruebas unitarias: unidades, aritmética, catálogo, enlaces, PDF, acceso
 npm run test:e2e  # recorrido completo en navegador, del chat al PDF
 npm run typecheck
 npm run lint
@@ -228,13 +228,23 @@ modo demostración, falta `GEMINI_API_KEY` en el entorno correcto.
 
 ## Sobre los datos
 
-- Los precios del catálogo local son **rangos de mercado orientativos de 2026**
-  para la provincia de Málaga, sin IVA, y así se etiquetan en la interfaz y en
-  el PDF. No son tarifas en firme.
+- El catálogo de demostración contiene **productos reales con su ficha
+  enlazada** en Obramat y Leroy Merlin (ambos con tienda en la provincia de
+  Málaga y venta online). Proceden de una investigación de agosto de 2026 con
+  verificación cruzada: cada URL se localizó por búsqueda web y se re-verificó
+  de forma independiente. Sólo entraron fichas con veredicto CONFIRMADO.
+- Los precios de tienda son PVP con IVA; el catálogo los guarda **sin IVA**
+  (PVP ÷ 1,21) porque el motor añade el IVA al final del presupuesto, y anota
+  el PVP original en la ficha técnica de cada producto. Se etiquetan como
+  «precio de catálogo»: son reales, pero pueden variar respecto a la web.
+- Dos familias quedan sin enlace a sabiendas: el hormigón preparado (se
+  encarga a planta, no se vende online) y la lámina asfáltica (su ficha no
+  pudo verificarse). Ambas van marcadas como estimadas.
+- Los catálogos de las tiendas cambian. Si una ficha muere o un precio baila,
+  se actualiza en `src/lib/demo/suppliers.ts` / `src/lib/demo/catalog.ts`.
 - El directorio de `src/lib/demo/suppliers.ts` recoge distribuidores reales con
   presencia contrastada en la provincia. Sirve para anclar la búsqueda de la IA
-  y evitar que invente nombres verosímiles, que es el error más caro que puede
-  cometer un sistema de presupuestos.
+  y evitar que invente nombres verosímiles.
 - Los precios que devuelve la IA se etiquetan según su origen: *verificado*
   (tarifa consultada), *de catálogo* o *estimado*. El PDF advierte de forma
   destacada cuando alguna partida usa precios estimados.

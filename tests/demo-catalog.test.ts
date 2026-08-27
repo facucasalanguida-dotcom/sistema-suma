@@ -164,3 +164,64 @@ describe('saneado de URLs de ficha', () => {
     expect(parse('no es una url')).toBeNull();
   });
 });
+
+describe('enlaces de compra del catálogo de demostración', () => {
+  const ALL_QUERIES = [
+    'porcelanico', 'cemento', 'cemento cola', 'pladur', 'aislamiento', 'ladrillo',
+    'bloque', 'arena', 'acero', 'pintura', 'tubo pvc', 'cable', 'madera', 'teja',
+  ];
+
+  // El hormigón preparado se encarga a planta y la ficha de la lámina asfáltica
+  // no pudo verificarse: son las dos únicas familias sin enlace, y a sabiendas.
+  const UNLINKED_QUERIES = ['hormigon', 'impermeabilizacion'];
+
+  it('toda oferta enlazable lleva la ficha del producto', () => {
+    for (const query of ALL_QUERIES) {
+      for (const offer of searchDemoCatalog(query, 20)) {
+        expect(offer.sourceUrl, `${query} → ${offer.productName}`).toMatch(/^https:\/\//);
+      }
+    }
+  });
+
+  it('las fichas son páginas de producto, no portadas', () => {
+    for (const query of ALL_QUERIES) {
+      for (const offer of searchDemoCatalog(query, 20)) {
+        const parsed = new URL(offer.sourceUrl!);
+        expect(parsed.pathname.length, offer.sourceUrl!).toBeGreaterThan(10);
+      }
+    }
+  });
+
+  it('las fichas pertenecen a tiendas conocidas con venta en Málaga', () => {
+    const shops = new Set(['www.obramat.es', 'www.leroymerlin.es']);
+    for (const query of ALL_QUERIES) {
+      for (const offer of searchDemoCatalog(query, 20)) {
+        expect(shops, offer.sourceUrl!).toContain(new URL(offer.sourceUrl!).hostname);
+      }
+    }
+  });
+
+  it('las familias sin venta online quedan sin enlace y marcadas como estimadas', () => {
+    for (const query of UNLINKED_QUERIES) {
+      const offers = searchDemoCatalog(query, 20);
+      expect(offers.length).toBeGreaterThan(0);
+      for (const offer of offers) {
+        expect(offer.sourceUrl).toBeNull();
+        expect(offer.confidence).toBe('estimada');
+      }
+    }
+  });
+
+  it('los precios están guardados sin IVA (por debajo del PVP anotado)', () => {
+    for (const query of ALL_QUERIES) {
+      for (const offer of searchDemoCatalog(query, 20)) {
+        const pvp = offer.specs.find((spec) => spec.key === 'PVP web');
+        expect(pvp, `${offer.productName} sin PVP anotado`).toBeDefined();
+        const shown = Number(pvp!.value.replace(/[^0-9,]/g, ' ').trim().split(/\s+/)[0].replace(',', '.'));
+        expect(offer.price, offer.productName).toBeLessThan(shown);
+        // sin IVA ≈ PVP / 1,21, con margen de céntimos por el redondeo
+        expect(offer.price, offer.productName).toBeCloseTo(shown / 1.21, 1);
+      }
+    }
+  });
+});
