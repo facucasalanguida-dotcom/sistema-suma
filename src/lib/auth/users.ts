@@ -32,6 +32,15 @@ export interface StoredUser {
   totp?: string;
   /** Hashes SHA-256 de los códigos de recuperación aún sin usar. */
   recuperacion?: string[];
+  /**
+   * `true` si puede dar de alta a otras personas.
+   *
+   * Importa más de lo que parece: la pantalla de alta devuelve el valor
+   * completo de `SUMA_USUARIOS`, que contiene los hashes de contraseña y los
+   * secretos del segundo factor de TODO el equipo. Dárselo a cualquiera con
+   * sesión sería regalarle las credenciales de sus compañeros.
+   */
+  admin?: boolean;
 }
 
 /** Lee y valida la lista de usuarios configurada. Nunca lanza. */
@@ -59,6 +68,7 @@ export function loadUsers(): StoredUser[] {
           correo: normalizeEmail(user.correo),
           hash,
           totp: typeof user.totp === 'string' && user.totp.trim() ? user.totp.trim() : undefined,
+          admin: user.admin === true,
           recuperacion: Array.isArray(user.recuperacion)
             ? user.recuperacion.map((code) => String(code))
             : undefined,
@@ -79,6 +89,24 @@ export function encodeUsers(users: StoredUser[]): string {
 function normalizeEmail(value: unknown): string | undefined {
   const email = String(value ?? '').trim().toLowerCase();
   return email.includes('@') ? email : undefined;
+}
+
+/**
+ * ¿Puede esta persona administrar las cuentas?
+ *
+ * Se comprueba contra la configuración, no contra la sesión: aunque alguien
+ * lograse fabricar un token, el permiso sale de `SUMA_USUARIOS`, que sólo se
+ * cambia desde el panel de Vercel.
+ */
+export function isAdmin(identifier: string): boolean {
+  const user = findUser(identifier);
+  if (!user) return false;
+  if (user.admin) return true;
+
+  // Compatibilidad: si nadie está marcado como administrador (configuración
+  // creada antes de que existiera el permiso), lo es el primero de la lista.
+  const users = loadUsers();
+  return !users.some((entry) => entry.admin) && users[0]?.usuario === user.usuario;
 }
 
 /** Busca un usuario por su nombre de acceso o por su correo. */

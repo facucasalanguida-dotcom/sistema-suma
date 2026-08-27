@@ -1,5 +1,6 @@
 import { Workbench } from '@/components/Workbench';
 import { requireSession } from '@/lib/auth/dal';
+import { isAdmin } from '@/lib/auth/users';
 import { isGeminiConfigured } from '@/lib/gemini/client';
 
 export const dynamic = 'force-dynamic';
@@ -20,6 +21,7 @@ export default async function Home() {
       aiEnabled={isGeminiConfigured()}
       usuario={session.nombre}
       viaGoogle={session.via === 'google'}
+      esAdmin={isAdmin(session.sub)}
     />
   );
 }

@@ -60,9 +60,16 @@ interface WorkbenchProps {
   usuario?: string;
   /** `true` si ha entrado con Google, para decirlo en el menú. */
   viaGoogle?: boolean;
+  /** `true` si puede dar de alta a otras personas. */
+  esAdmin?: boolean;
 }
 
-export function Workbench({ aiEnabled, usuario, viaGoogle = false }: WorkbenchProps) {
+export function Workbench({
+  aiEnabled,
+  usuario,
+  viaGoogle = false,
+  esAdmin = false,
+}: WorkbenchProps) {
   const messages = useBudgetStore((state) => state.messages);
   const lines = useBudgetStore((state) => state.lines);
   const laborLines = useBudgetStore((state) => state.laborLines);
@@ -190,7 +197,9 @@ export function Workbench({ aiEnabled, usuario, viaGoogle = false }: WorkbenchPr
             </Button>
           ) : null}
 
-          {usuario ? <UserMenu nombre={usuario} viaGoogle={viaGoogle} /> : null}
+          {usuario ? (
+            <UserMenu nombre={usuario} viaGoogle={viaGoogle} esAdmin={esAdmin} />
+          ) : null}
         </div>
       </header>
 

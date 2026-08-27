@@ -12,7 +12,16 @@ import { cn } from '@/lib/cn';
  * la cookie de sesión se borra en el servidor, que es el único sitio donde se
  * puede borrar de verdad una cookie `httpOnly`.
  */
-export function UserMenu({ nombre, viaGoogle }: { nombre: string; viaGoogle: boolean }) {
+export function UserMenu({
+  nombre,
+  viaGoogle,
+  esAdmin,
+}: {
+  nombre: string;
+  viaGoogle: boolean;
+  /** Sólo quien administra ve la opción de dar de alta a otras personas. */
+  esAdmin: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -73,14 +82,16 @@ export function UserMenu({ nombre, viaGoogle }: { nombre: string; viaGoogle: boo
 
           <div className="my-1 h-px bg-suma-border" aria-hidden />
 
-          <a
-            href="/acceso/alta"
-            role="menuitem"
-            className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-suma-muted transition-colors hover:bg-suma-high hover:text-suma-ink"
-          >
-            <UserPlus className="size-3.5" aria-hidden />
-            Dar de alta a alguien
-          </a>
+          {esAdmin ? (
+            <a
+              href="/acceso/alta"
+              role="menuitem"
+              className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] text-suma-muted transition-colors hover:bg-suma-high hover:text-suma-ink"
+            >
+              <UserPlus className="size-3.5" aria-hidden />
+              Dar de alta a alguien
+            </a>
+          ) : null}
 
           <form action={cerrarSesion}>
             <button

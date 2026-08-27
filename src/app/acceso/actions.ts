@@ -6,12 +6,14 @@ import { audit } from '@/lib/auth/audit';
 import {
   checkRate,
   consumeOnce,
+  consumeRecovery,
   registerFailure,
   registerSuccess,
 } from '@/lib/auth/rate-limit';
 import {
   createPendingSession,
   createSession,
+  destroyPendingSession,
   destroySession,
   readPendingSession,
 } from '@/lib/auth/session';
@@ -98,6 +100,21 @@ export async function iniciarSesion(_prev: FormState, formData: FormData): Promi
     redirect('/acceso/codigo');
   }
 
+  // Las cuentas creadas desde /acceso/alta SIEMPRE llevan segundo factor. Una
+  // sin él sólo puede venir de editar la configuración a mano, así que se
+  // avisa; y con SUMA_EXIGIR_2FA puesto, directamente no se deja entrar.
+  if (process.env.SUMA_EXIGIR_2FA) {
+    audit('acceso-fallido', { usuario, ip, motivo: 'cuenta-sin-segundo-factor' });
+    return {
+      error:
+        'Esta cuenta no tiene segundo factor y el sistema lo exige. ' +
+        'Pide que la vuelvan a dar de alta.',
+    };
+  }
+
+  console.warn(
+    `[suma:auditoria] AVISO: la cuenta «${result.user.usuario}» no tiene segundo factor.`,
+  );
   await createSession({
     sub: result.user.usuario,
     nombre: result.user.nombre,
@@ -157,26 +174,41 @@ export async function verificarCodigo(_prev: FormState, formData: FormData): Pro
 
   const usedRecovery = checkRecoveryCode(user, codigo);
   if (usedRecovery) {
+    // Un código de recuperación es de un solo uso. Sin base de datos esto sólo
+    // se puede garantizar dentro de la misma instancia, así que además se
+    // avisa por el registro de que hay que retirarlo de la configuración.
+    if (!consumeRecovery(user.usuario, usedRecovery)) {
+      registerFailure(key);
+      audit('segundo-factor-fallido', { usuario: user.usuario, ip, motivo: 'recuperacion-gastada' });
+      return { error: 'Ese código de recuperación ya se ha usado. Prueba con otro.' };
+    }
+
     registerSuccess(key);
     await createSession({ sub: user.usuario, nombre: user.nombre, via: 'contrasena' });
     audit('codigo-recuperacion-usado', { usuario: user.usuario, ip });
-    // No hay base de datos donde tachar el código gastado: se avisa en el
-    // registro para que quien administre lo retire de la configuración.
     console.warn(
-      `[suma:auditoria] código de recuperación consumido por ${user.usuario}. ` +
-        'Retíralo de SUMA_USUARIOS y genera uno nuevo.',
+      `[suma:auditoria] AVISO: código de recuperación consumido por ${user.usuario}. ` +
+        'Retíralo de SUMA_USUARIOS y genera uno nuevo cuanto antes.',
     );
     redirect('/');
   }
 
   const failure = registerFailure(key);
   audit('segundo-factor-fallido', { usuario: user.usuario, ip });
-  return failure.esperaSegundos > 0
-    ? {
-        error: `Demasiados intentos. Espera ${failure.esperaSegundos} segundos.`,
-        espera: failure.esperaSegundos,
-      }
-    : { error: 'El código no es correcto. Comprueba la aplicación de tu teléfono.' };
+
+  if (failure.esperaSegundos > 0) {
+    // Al bloquearse, se tira también la marca de «a medio entrar»: para
+    // reintentar hay que volver a poner la contraseña, y ese paso está
+    // limitado por su cuenta y cuesta medio segundo de CPU cada vez. Así,
+    // probar los seis dígitos a lo bruto deja de ser barato.
+    await destroyPendingSession();
+    return {
+      error: `Demasiados intentos. Espera ${failure.esperaSegundos} segundos y vuelve a entrar.`,
+      espera: failure.esperaSegundos,
+    };
+  }
+
+  return { error: 'El código no es correcto. Comprueba la aplicación de tu teléfono.' };
 }
 
 /* ────────────────────────────────────────────────────────────────────────── */

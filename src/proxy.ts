@@ -125,9 +125,9 @@ export async function proxy(request: NextRequest) {
     // despliegue no puede traducirse en una aplicación abierta al mundo con
     // una clave de IA de pago detrás: se cierra y se explica qué falta.
     return new NextResponse(
-      'Este sistema todavía no tiene configurado el acceso.\n\n' +
-        'Define SESSION_SECRET (y crea la primera cuenta en /acceso/alta) o, ' +
-        'de momento, SUMA_ACCESS_PASSWORD.',
+      'Este sistema no tiene bien configurado el acceso.\n\n' +
+        'Define SESSION_SECRET con al menos 32 caracteres (y crea la primera ' +
+        'cuenta en /acceso/alta) o, de momento, SUMA_ACCESS_PASSWORD.',
       {
         status: 503,
         headers: {

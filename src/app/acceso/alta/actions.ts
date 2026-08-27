@@ -11,7 +11,13 @@ import {
   totpUri,
 } from '@/lib/auth/crypto';
 import { getSession } from '@/lib/auth/dal';
-import { encodeUsers, hashRecoveryCode, loadUsers, type StoredUser } from '@/lib/auth/users';
+import {
+  encodeUsers,
+  hashRecoveryCode,
+  isAdmin,
+  loadUsers,
+  type StoredUser,
+} from '@/lib/auth/users';
 
 /**
  * Alta de usuarios.
@@ -23,9 +29,13 @@ import { encodeUsers, hashRecoveryCode, loadUsers, type StoredUser } from '@/lib
  * y listo para pegar en Vercel.
  *
  * Quién puede usarla:
- *  - cualquiera con sesión abierta (para añadir compañeros), o
+ *  - quien ADMINISTRA las cuentas, o
  *  - quien sepa la contraseña de instalación (`SUMA_ACCESS_PASSWORD`), que es
  *    la única forma de crear la PRIMERA cuenta cuando aún no hay ninguna.
+ *
+ * El permiso de administración no es un adorno: el resultado incluye el valor
+ * completo de `SUMA_USUARIOS`, con los hashes de contraseña y los secretos del
+ * segundo factor de todo el equipo. Cualquiera con sesión NO puede verlo.
  */
 
 export interface AltaState {
@@ -50,6 +60,15 @@ export async function crearUsuario(_prev: AltaState, formData: FormData): Promis
 
   /* ── Permiso ────────────────────────────────────────────────────────── */
   const sesion = await getSession();
+
+  if (sesion && !isAdmin(sesion.sub)) {
+    audit('acceso-fallido', { usuario: sesion.sub, motivo: 'alta-sin-permiso-admin' });
+    return {
+      error:
+        'Tu cuenta no puede dar de alta a otras personas. Pídeselo a quien administre el sistema.',
+    };
+  }
+
   if (!sesion) {
     const instalacion = process.env.SUMA_ACCESS_PASSWORD;
     const aportada = String(formData.get('instalacion') ?? '');
@@ -109,6 +128,9 @@ export async function crearUsuario(_prev: AltaState, formData: FormData): Promis
     hash: await hashPassword(contrasena),
     totp: secreto,
     recuperacion: codigos.map(hashRecoveryCode),
+    // La primera cuenta administra; las demás, no, salvo que se marque a mano
+    // en la configuración. Es el principio de dar el mínimo permiso posible.
+    admin: existentes.length === 0,
   };
 
   const variable = encodeUsers([...existentes, nuevo]);

@@ -163,3 +163,26 @@ export function consumeOnce(user: string, counter: number, now: number = Date.no
 export function resetUsedCodes(): void {
   usedCodes.clear();
 }
+
+/**
+ * Códigos de recuperación ya gastados.
+ *
+ * MISMA LIMITACIÓN, y conviene decirla clara: al no haber base de datos, esto
+ * sólo impide la reutilización dentro de la misma instancia. La invalidación
+ * definitiva es responsabilidad de quien administra: al usarse un código, el
+ * registro avisa de que hay que retirarlo de `SUMA_USUARIOS`.
+ */
+const usedRecovery = new Set<string>();
+
+/** Marca un código de recuperación como gastado. `false` si ya lo estaba. */
+export function consumeRecovery(user: string, codeHash: string): boolean {
+  const key = `${user}:${codeHash}`;
+  if (usedRecovery.has(key)) return false;
+  usedRecovery.add(key);
+  return true;
+}
+
+/** Sólo para las pruebas. */
+export function resetUsedRecovery(): void {
+  usedRecovery.clear();
+}

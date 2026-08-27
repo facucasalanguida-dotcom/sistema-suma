@@ -152,14 +152,30 @@ export async function completeGoogleLogin(params: {
   }
 }
 
+const CALLBACK_PATH = '/api/auth/google/callback';
+
 /**
- * La URL de vuelta que hay que declarar en Google Cloud. Se calcula a partir
- * de la petición para que funcione igual en local, en las vistas previas de
- * Vercel y en el dominio definitivo, y se puede fijar con
- * `SUMA_URL_PUBLICA` cuando haya un dominio propio.
+ * La URL de vuelta que hay que declarar en Google Cloud.
+ *
+ * El orden importa, y va de lo más fiable a lo menos:
+ *
+ *  1. `SUMA_URL_PUBLICA`, si está puesta. Es lo único que controla el equipo.
+ *  2. El dominio de producción que Vercel inyecta por su cuenta.
+ *  3. La dirección de la propia petición, que en el fondo sale de la cabecera
+ *     `Host` y por tanto la elige quien llama.
+ *
+ * El caso 3 es el que hay que mirar con recelo: alguien podría mandar un
+ * `Host` falso para que la vuelta apunte a un sitio suyo. En la práctica no
+ * sirve de nada, porque Google rechaza cualquier `redirect_uri` que no esté
+ * declarada en la consola; aun así, conviene no depender de eso y por eso se
+ * prefieren las dos primeras fuentes.
  */
 export function callbackUrl(request: Request): string {
   const configured = process.env.SUMA_URL_PUBLICA?.trim().replace(/\/+$/, '');
-  if (configured) return `${configured}/api/auth/google/callback`;
-  return new URL('/api/auth/google/callback', request.url).toString();
+  if (configured) return `${configured}${CALLBACK_PATH}`;
+
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercel) return `https://${vercel.replace(/^https?:\/\//, '').replace(/\/+$/, '')}${CALLBACK_PATH}`;
+
+  return new URL(CALLBACK_PATH, request.url).toString();
 }

@@ -123,12 +123,23 @@ export function isDeployed(): boolean {
 }
 
 /**
- * `true` si hay que exigir acceso pero NO hay forma de darlo: despliegue real
- * sin cuentas y sin contraseña compartida. Es un error de configuración, y la
- * respuesta correcta es no servir nada.
+ * `true` si el despliegue está mal configurado y no debe servir nada.
+ *
+ * Dos casos, y el segundo es el traicionero:
+ *
+ *  1. No hay ni cuentas ni contraseña compartida: no hay puerta ninguna.
+ *  2. Alguien ha puesto una `SESSION_SECRET` demasiado corta. Antes eso
+ *     desactivaba el sistema de cuentas EN SILENCIO y la aplicación caía a la
+ *     contraseña compartida —o a nada— sin avisar. Un intento de configurar
+ *     la seguridad no puede acabar en menos seguridad de la esperada.
  */
 export function authMisconfigured(): boolean {
-  return isDeployed() && !authIsConfigured() && !process.env.SUMA_ACCESS_PASSWORD;
+  if (!isDeployed()) return false;
+
+  const secret = process.env.SESSION_SECRET;
+  if (secret !== undefined && secret.length > 0 && secret.length < 32) return true;
+
+  return !authIsConfigured() && !process.env.SUMA_ACCESS_PASSWORD;
 }
 
 async function sign(payload: JWTPayload, maxAgeSeconds: number): Promise<string> {

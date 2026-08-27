@@ -5,6 +5,7 @@ import { callbackUrl, completeGoogleLogin } from '@/lib/auth/google';
 import { checkRate, registerFailure, registerSuccess, clientKey } from '@/lib/auth/rate-limit';
 import { createSession } from '@/lib/auth/session';
 import { findUser, googleEmailAllowed, googleIsConfigured } from '@/lib/auth/users';
+import { OAUTH_COOKIES, oauthCookieOptions } from '@/lib/auth/oauth-cookies';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -33,28 +34,28 @@ export async function GET(request: Request) {
   // Google avisa aquí si el usuario ha cancelado.
   if (url.searchParams.get('error')) {
     loginUrl.searchParams.set('error', 'google-cancelado');
-    return NextResponse.redirect(loginUrl);
+    return clearOauthCookies(NextResponse.redirect(loginUrl));
   }
 
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const cookies = request.headers.get('cookie') ?? '';
-  const expectedState = readCookie(cookies, 'suma_oauth_state');
-  const nonce = readCookie(cookies, 'suma_oauth_nonce');
-  const verifier = readCookie(cookies, 'suma_oauth_verifier');
+  const expectedState = readCookie(cookies, OAUTH_COOKIES.state);
+  const nonce = readCookie(cookies, OAUTH_COOKIES.nonce);
+  const verifier = readCookie(cookies, OAUTH_COOKIES.verifier);
 
   if (!code || !state || !expectedState || !nonce || !verifier) {
     registerFailure(rateKey);
     audit('google-error', { motivo: 'faltan-parametros' });
     loginUrl.searchParams.set('error', 'google-fallido');
-    return NextResponse.redirect(loginUrl);
+    return clearOauthCookies(NextResponse.redirect(loginUrl));
   }
 
   if (!safeEquals(state, expectedState)) {
     registerFailure(rateKey);
     audit('google-error', { motivo: 'estado-no-coincide' });
     loginUrl.searchParams.set('error', 'google-fallido');
-    return NextResponse.redirect(loginUrl);
+    return clearOauthCookies(NextResponse.redirect(loginUrl));
   }
 
   const identity = await completeGoogleLogin({
@@ -95,18 +96,39 @@ export async function GET(request: Request) {
   return clearOauthCookies(response);
 }
 
+/**
+ * Lee una cookie de la cabecera. Nunca lanza: una cookie con codificación
+ * porcentual mal formada («%zz») haría estallar `decodeURIComponent` y con
+ * ella todo el retorno de Google, que es un 500 que cualquiera puede provocar
+ * poniéndose una cookie a mano.
+ */
 function readCookie(header: string, name: string): string | null {
   for (const part of header.split(';')) {
     const [key, ...rest] = part.trim().split('=');
-    if (key === name) return decodeURIComponent(rest.join('='));
+    if (key !== name) continue;
+
+    const raw = rest.join('=');
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
   }
   return null;
 }
 
-/** Los secretos de un solo uso se retiran en cuanto se han usado. */
+/**
+ * Los secretos de un solo uso se retiran SIEMPRE: al usarlos y también en cada
+ * rama de error. Si quedasen en el navegador, un `state` válido seguiría
+ * disponible para otro intento.
+ *
+ * El borrado repite los atributos exactos con los que se crearon: con el
+ * prefijo `__Host-`, una cookie de borrado sin `Secure` y sin `Path=/` la
+ * rechaza el navegador y el borrado no llega a ocurrir.
+ */
 function clearOauthCookies(response: NextResponse): NextResponse {
-  for (const name of ['suma_oauth_state', 'suma_oauth_nonce', 'suma_oauth_verifier']) {
-    response.cookies.set(name, '', { path: '/', maxAge: 0 });
+  for (const name of Object.values(OAUTH_COOKIES)) {
+    response.cookies.set(name, '', oauthCookieOptions(0));
   }
   return response;
 }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hashPassword, generateTotpSecret, totpCode } from '@/lib/auth/crypto';
 import {
   allowedGoogleEmails,
+  isAdmin,
   checkCredentials,
   checkRecoveryCode,
   checkTotp,
@@ -151,6 +152,47 @@ describe('segundo factor y recuperación', () => {
     const stored = loadUsers()[0].recuperacion ?? [];
     expect(stored[0]).not.toContain('aaaa');
     expect(stored[0]).toMatch(/^[0-9a-f]{32}$/);
+  });
+});
+
+describe('permiso de administración', () => {
+  /**
+   * Importa mucho: la pantalla de alta devuelve el valor completo de
+   * SUMA_USUARIOS, con los hashes y los secretos del segundo factor de todo el
+   * equipo. Sólo puede verlo quien administra.
+   */
+  it('a falta de marca explícita, administra el primero de la lista', () => {
+    expect(isAdmin('facu')).toBe(true);
+    expect(isAdmin('peon')).toBe(false);
+  });
+
+  it('con la marca puesta, manda la marca y no el orden', async () => {
+    process.env.SUMA_USUARIOS = encodeUsers([
+      { ...usuarios[0], admin: false },
+      { ...usuarios[1], admin: true },
+    ]);
+
+    expect(isAdmin('facu')).toBe(false);
+    expect(isAdmin('peon')).toBe(true);
+  });
+
+  it('puede haber varios administradores', () => {
+    process.env.SUMA_USUARIOS = encodeUsers([
+      { ...usuarios[0], admin: true },
+      { ...usuarios[1], admin: true },
+    ]);
+
+    expect(isAdmin('facu')).toBe(true);
+    expect(isAdmin('peon')).toBe(true);
+  });
+
+  it('quien no existe no administra nada', () => {
+    expect(isAdmin('intruso')).toBe(false);
+    expect(isAdmin('')).toBe(false);
+  });
+
+  it('también se reconoce por el correo', () => {
+    expect(isAdmin('facu@gruposuma.eu')).toBe(true);
   });
 });
 
