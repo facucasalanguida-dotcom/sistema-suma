@@ -120,6 +120,38 @@ describe('scrapeShops', () => {
     expect(pages.length).toBeGreaterThan(0);
     expect(pages.every((page) => !page.url.includes('obramat'))).toBe(true);
   });
+
+  it('una tienda que bloquea la descarga entra igual con los datos del índice', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = new URL(String(input));
+        const domain = url.searchParams.get('siteSearch') ?? 'desconocida';
+        return Promise.resolve(
+          jsonResponse({
+            items: [
+              {
+                title: `Ventilador de ${domain}`,
+                link: `https://www.${domain}/ventilador-107`,
+                snippet: 'Ventilador de techo · 62,00 €',
+                displayLink: domain,
+              },
+            ],
+          }),
+        );
+      }),
+    );
+
+    // Todas las tiendas rechazan la descarga directa (antibot).
+    const pageFetch = vi.fn(() =>
+      Promise.resolve(new Response('bloqueado', { status: 403 })),
+    );
+
+    const pages = await scrapeShops('ventilador', pageFetch as typeof fetch);
+    expect(pages.length).toBeGreaterThan(0);
+    expect(pages[0].fetched).toBe(false);
+    expect(pages[0].evidence).toContain('62,00 €');
+  });
 });
 
 describe('formatLiveEvidence', () => {
@@ -129,10 +161,28 @@ describe('formatLiveEvidence', () => {
 
   it('numera cada ficha con su tienda y su URL literal', () => {
     const evidence = formatLiveEvidence([
-      { url: 'https://www.obramat.es/ventilador-1', domain: 'obramat.es', evidence: 'Precio 62 €' },
+      {
+        url: 'https://www.obramat.es/ventilador-1',
+        domain: 'obramat.es',
+        evidence: 'Precio 62 €',
+        fetched: true,
+      },
     ]);
     expect(evidence).toContain('FICHAS DESCARGADAS EN VIVO');
     expect(evidence).toContain('FICHA EN VIVO 1 · obramat.es');
     expect(evidence).toContain('https://www.obramat.es/ventilador-1');
+  });
+
+  it('distingue las fichas del índice de las descargadas', () => {
+    const evidence = formatLiveEvidence([
+      {
+        url: 'https://www.leroymerlin.es/ventilador-2',
+        domain: 'leroymerlin.es',
+        evidence: 'Título: Ventilador',
+        fetched: false,
+      },
+    ]);
+    expect(evidence).toContain('FICHA DEL ÍNDICE 1 · leroymerlin.es');
+    expect(evidence).toContain('bloquea la descarga directa');
   });
 });

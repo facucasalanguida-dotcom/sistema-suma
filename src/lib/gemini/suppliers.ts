@@ -155,8 +155,9 @@ export async function searchSuppliers(
     }
   }
 
-  // Las fichas leídas en vivo ya están comprobadas por definición: acaban de
-  // responder con su contenido. Cuentan como verificadas y no se re-visitan.
+  // Las fichas de la lectura en vivo ya están comprobadas: o acaban de
+  // responder con su contenido, o el índice de Google acaba de devolverlas.
+  // Cuentan como verificadas y no se re-visitan.
   const liveCanonicals = new Set<string>();
   for (const page of livePages) {
     const canonical = canonicalUrl(page.url);

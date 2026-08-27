@@ -1,23 +1,42 @@
-import { UTILITY_MODEL, callGemini, extractJson, type RequestBudget } from './client';
-import { BASE_SYSTEM, buildImportPrompt } from './prompts';
+import {
+  SEARCH_MODEL,
+  UTILITY_MODEL,
+  callGemini,
+  extractJson,
+  type RequestBudget,
+} from './client';
+import { BASE_SYSTEM, buildImportPrompt, buildImportSearchPrompt } from './prompts';
 import { offersResponseSchema } from './schemas';
 import { normalizeOffersResponse } from './suppliers';
 import {
+  cleanProductUrl,
+  describeUrlSlug,
   extractPageEvidence,
   fetchProductPage,
   looksLikeHomepage,
   supplierForDomain,
 } from '../import/product-page';
+import { isCseConfigured, searchShopProducts, type CseResult } from '../search/google-cse';
+import { canonicalUrl } from '../search/verify-links';
 import type { MaterialRequest, SupplierOffer } from '../types';
 
 /**
  * Flujo «tráete el producto de la tienda»: el usuario navega por CUALQUIER
- * tienda online, elige el producto que le convence y pega aquí su enlace. El
- * servidor descarga esa ficha en el momento, el modelo la convierte en una
- * oferta y la tarjeta queda lista para «Agregar al presupuesto».
+ * tienda online, elige el producto que le convence y pega aquí su enlace.
+ *
+ * Plan A: descargar la ficha en el momento y leerla tal cual.
+ * Plan B: muchas tiendas grandes (Leroy Merlin, por ejemplo) bloquean las
+ * descargas automáticas desde servidores. Entonces el producto se reconstruye
+ * con lo que sí está disponible: la descripción que la propia URL lleva
+ * escrita, lo que el índice de Google guarda de esa ficha y una búsqueda en
+ * Internet sobre ese producto exacto. El precio jamás se inventa: si ninguna
+ * fuente lo da, se le dice al usuario con claridad.
  */
 
 const IMPORT_STRUCTURE_CAP_MS = 20_000;
+/** Búsqueda anclada de la ficha bloqueada: sólo si queda tiempo de sobra. */
+const IMPORT_SEARCH_CAP_MS = 14_000;
+const IMPORT_SEARCH_MIN_REMAINING_MS = 30_000;
 
 export type ImportResult =
   | { ok: true; offer: SupplierOffer; request: MaterialRequest; reply: string }
@@ -37,31 +56,150 @@ export async function importProductFromUrl(
     };
   }
 
-  const page = await fetchProductPage(url, fetchImpl);
-  if (!page) {
+  const cleanUrl = cleanProductUrl(url);
+
+  // Plan A: leer la página directamente (con la URL original y, si falla,
+  // con la URL limpia de parámetros publicitarios).
+  let page = await fetchProductPage(url, fetchImpl);
+  if (!page && cleanUrl !== url) {
+    page = await fetchProductPage(cleanUrl, fetchImpl);
+  }
+
+  if (page) {
+    const evidence = extractPageEvidence(page.html);
+    if (evidence) {
+      return structureImport({
+        url: cleanProductUrl(page.finalUrl),
+        evidence,
+        mode: 'pagina',
+        linkVerified: true,
+        budget,
+      });
+    }
+  }
+
+  // Plan B: la tienda bloquea la lectura. Se reconstruye la ficha con la
+  // URL, el índice de Google y una búsqueda sobre ese producto exacto.
+  const indirect = await gatherIndirectEvidence(cleanUrl, budget);
+
+  if (!indirect.evidence) {
     return {
       ok: false,
       reply:
-        'No he podido abrir ese enlace: la tienda no responde o bloquea la consulta. ' +
-        'Comprueba que el enlace funciona en tu navegador y vuelve a pegarlo; ' +
-        'si sigue fallando, dime el nombre exacto del producto y lo busco yo.',
+        'Esa tienda bloquea la lectura automática de su web y no he encontrado ' +
+        'datos de esa ficha en el índice de Google. Dime el nombre del producto ' +
+        '(por ejemplo, como aparece en el título de la página) y lo busco yo.',
     };
   }
 
-  const evidence = extractPageEvidence(page.html);
-  if (!evidence) {
+  const result = await structureImport({
+    url: cleanUrl,
+    evidence: indirect.evidence,
+    mode: 'indice',
+    linkVerified: indirect.confirmedByIndex,
+    budget,
+  });
+
+  if (result.ok) {
     return {
-      ok: false,
+      ...result,
       reply:
-        'He abierto la página pero no he podido leer su contenido. ' +
-        'Dime el nombre exacto del producto y su precio y lo preparo a mano.',
+        'La tienda no permite leer su web automáticamente, así que he tomado los ' +
+        `datos del índice de Google sobre esa misma ficha.\n\n${result.reply}`,
     };
   }
+  return result;
+}
 
+/**
+ * Evidencia indirecta de una ficha que no se deja descargar: lo que dice la
+ * URL, lo que guarda el índice de Google y lo que encuentra una búsqueda.
+ */
+async function gatherIndirectEvidence(
+  url: string,
+  budget?: RequestBudget,
+): Promise<{ evidence: string; confirmedByIndex: boolean }> {
+  const sections: string[] = [];
+  let confirmedByIndex = false;
+
+  const slug = describeUrlSlug(url);
+  if (slug.text || slug.reference) {
+    sections.push(
+      'LO QUE DICE LA PROPIA URL\n' +
+        (slug.text ? `Descripción deducida de la dirección: ${slug.text}\n` : '') +
+        (slug.reference ? `Referencia del producto: ${slug.reference}` : ''),
+    );
+  }
+
+  // Índice de Google acotado a la tienda: primero por referencia (unívoca) y,
+  // si no la hay, por la descripción del slug.
+  let indexResults: CseResult[] = [];
+  const domain = hostOf(url);
+  if (isCseConfigured() && domain) {
+    const query = slug.reference ?? slug.text.split(' ').slice(0, 10).join(' ');
+    if (query) {
+      indexResults = await searchShopProducts(query, domain, 3).catch(() => []);
+    }
+  }
+  if (indexResults.length > 0) {
+    const target = canonicalUrl(url);
+    confirmedByIndex = indexResults.some(
+      (result) => target !== null && canonicalUrl(result.url) === target,
+    );
+    sections.push(
+      'LO QUE GUARDA EL ÍNDICE DE GOOGLE DE ESTA TIENDA\n' +
+        indexResults
+          .map(
+            (result, index) =>
+              `${index + 1}. ${result.title}\n   URL: ${result.url}\n   Extracto: ${result.snippet}`,
+          )
+          .join('\n'),
+    );
+  }
+
+  // Búsqueda anclada sobre la ficha exacta, si queda tiempo de sobra.
+  if ((budget?.remaining() ?? Number.POSITIVE_INFINITY) > IMPORT_SEARCH_MIN_REMAINING_MS) {
+    try {
+      const response = await callGemini(
+        {
+          model: SEARCH_MODEL,
+          contents: buildImportSearchPrompt(url, slug.text),
+          config: {
+            systemInstruction: BASE_SYSTEM,
+            tools: [{ googleSearch: {} }],
+            temperature: 0.2,
+          },
+        },
+        budget,
+        'La búsqueda de la ficha',
+        IMPORT_SEARCH_CAP_MS,
+      );
+      const text = response.text?.trim();
+      if (text) {
+        sections.push(`INFORME DE UNA BÚSQUEDA EN INTERNET SOBRE ESTA FICHA\n${text}`);
+      }
+    } catch {
+      // Sin búsqueda anclada se sigue con lo que haya.
+    }
+  }
+
+  // La URL sola no identifica precio ni producto con garantías suficientes.
+  const evidence = sections.length >= 2 ? sections.join('\n\n') : '';
+  return { evidence, confirmedByIndex };
+}
+
+/** Convierte la evidencia (directa o indirecta) en la oferta final. */
+async function structureImport(params: {
+  url: string;
+  evidence: string;
+  mode: 'pagina' | 'indice';
+  linkVerified: boolean;
+  budget?: RequestBudget;
+}): Promise<ImportResult> {
   const response = await callGemini(
     {
       model: UTILITY_MODEL,
-      contents: buildImportPrompt(page.finalUrl, evidence),
+      contents: buildImportPrompt(params.url, params.evidence, params.mode),
       config: {
         systemInstruction: BASE_SYSTEM,
         responseMimeType: 'application/json',
@@ -69,7 +207,7 @@ export async function importProductFromUrl(
         temperature: 0.1,
       },
     },
-    budget,
+    params.budget,
     'La lectura de la ficha',
     IMPORT_STRUCTURE_CAP_MS,
   );
@@ -87,15 +225,15 @@ export async function importProductFromUrl(
     };
   }
 
-  // La ficha se acaba de leer: la URL real, el proveedor deducido del dominio
-  // y la marca de verificación los pone el sistema, no el modelo.
+  // La URL real, el proveedor deducido del dominio y la marca de verificación
+  // los pone el sistema, no el modelo.
   const offer: SupplierOffer = {
     ...extracted,
     id: `import-${extracted.id}`,
-    supplier: supplierForDomain(page.finalUrl),
-    sourceUrl: page.finalUrl,
-    linkVerified: true,
-    confidence: 'alta',
+    supplier: supplierForDomain(params.url),
+    sourceUrl: params.url,
+    linkVerified: params.linkVerified,
+    confidence: params.mode === 'pagina' ? 'alta' : extracted.confidence,
   };
 
   const request: MaterialRequest = {
@@ -118,4 +256,12 @@ export async function importProductFromUrl(
       `${structured.summary}\n\n` +
       'Si te convence, pulsa «Agregar al presupuesto» y te pregunto la cantidad.',
   };
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return '';
+  }
 }

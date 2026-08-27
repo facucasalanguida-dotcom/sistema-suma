@@ -77,7 +77,7 @@ ${findings}
 
 INSTRUCCIONES
 - Conserva únicamente información presente en el informe. No añadas proveedores ni productos que no aparezcan.
-- Si el informe incluye una sección de FICHAS DESCARGADAS EN VIVO, ésa es la fuente que manda: cada bloque es el contenido real de una ficha de producto leída ahora mismo de la web de la tienda. Convierte en oferta CADA ficha en vivo que corresponda al material solicitado (usa su URL literal como \`sourceUrl\`, su precio publicado —marca \`priceIncludesVat\` si es PVP con IVA— y \`confidence\` = "alta"). Ignora las fichas en vivo que sean de otro producto distinto al pedido.
+- Si el informe incluye una sección de FICHAS DESCARGADAS EN VIVO, ésa es la fuente que manda: cada bloque es el contenido real de una ficha de producto leída ahora mismo de la web de la tienda, o —en los bloques marcados FICHA DEL ÍNDICE— lo que el índice de Google guarda de esa ficha. Convierte en oferta CADA ficha que corresponda al material solicitado (usa su URL literal como \`sourceUrl\` y su precio publicado, marcando \`priceIncludesVat\` si es PVP con IVA). \`confidence\` = "alta" para las fichas en vivo; "media" para las del índice, cuyo extracto puede no estar al día. Una ficha del índice sin precio en el extracto se incluye sólo si el resto del informe da su precio; si nadie lo da, se descarta. Ignora las fichas que sean de otro producto distinto al pedido.
 - \`sourceUrl\` es la URL de la ficha del producto que cita el informe, copiada literalmente. Si el informe no da la ficha exacta de una opción, deja \`sourceUrl\` vacío: jamás inventes ni "completes" una URL.
 - Si el informe incluye una sección de RESULTADOS DE LA BÚSQUEDA PROGRAMÁTICA, esas URLs también vienen literales de la API de Google: cuando una opción se corresponda con una de esas fichas, usa exactamente esa URL como \`sourceUrl\`.
 - El resto del informe complementa a las fichas en vivo: sirve para añadir opciones de proveedores que no tienen ficha leída (almacenes locales, material a granel), no para duplicar las que ya la tienen.
@@ -109,22 +109,51 @@ Usa exclusivamente distribuidores reales de la lista anterior o cadenas nacional
 }
 
 /** Importación: el usuario pega el enlace de una ficha y se lee esa página. */
-export function buildImportPrompt(url: string, evidence: string): string {
-  return `El usuario ha pegado el enlace de una ficha de producto y el sistema ha descargado esa página. Convierte su contenido en UNA oferta estructurada para el presupuesto.
+export function buildImportPrompt(
+  url: string,
+  evidence: string,
+  mode: 'pagina' | 'indice' = 'pagina',
+): string {
+  const origin =
+    mode === 'pagina'
+      ? `El usuario ha pegado el enlace de una ficha de producto y el sistema ha descargado esa página. Convierte su contenido en UNA oferta estructurada para el presupuesto.`
+      : `El usuario ha pegado el enlace de una ficha de producto, pero la tienda bloquea la descarga automática de su web. La evidencia de abajo procede de la propia URL, del índice de Google y de una búsqueda en Internet sobre esa misma ficha. Convierte esa evidencia en UNA oferta estructurada para el presupuesto.`;
+
+  const confidenceRule =
+    mode === 'pagina'
+      ? `- \`confidence\` = "alta": la ficha se ha leído directamente.`
+      : `- \`confidence\` = "alta" sólo si el precio aparece en un extracto del índice o de la búsqueda referido a ESTA ficha; "media" si procede de una fuente menos directa. Si no encuentras ningún precio para este producto, devuelve \`offers\` vacío y dilo en \`summary\`: jamás te inventes el precio.`;
+
+  return `${origin}
 
 URL DE LA FICHA
 ${url}
 
-CONTENIDO DE LA PÁGINA
+EVIDENCIA DISPONIBLE
 ${evidence}
 
 INSTRUCCIONES
-- La página describe UN producto: devuelve exactamente una oferta en \`offers\` con sus datos reales (nombre comercial, marca, precio con su unidad de venta, y el rendimiento por unidad de venta).
-- Usa sólo lo que dice la página. El precio debe ser el que aparece publicado; indica en \`priceIncludesVat\` si es PVP con IVA (en tiendas al público casi siempre lo es).
-- \`confidence\` = "alta": la ficha se ha leído directamente.
+- La evidencia describe UN producto: devuelve exactamente una oferta en \`offers\` con sus datos reales (nombre comercial, marca, precio con su unidad de venta, y el rendimiento por unidad de venta).
+- Usa sólo lo que dice la evidencia. El precio debe ser el publicado; indica en \`priceIncludesVat\` si es PVP con IVA (en tiendas al público casi siempre lo es).
+${confidenceRule}
 - Deja \`sourceUrl\` vacío: el sistema ya conoce la URL y la pondrá él.
-- Si la página NO es la ficha de un producto concreto (es un listado, una categoría, una portada o no aparece ningún precio), devuelve \`offers\` vacío y explica en \`summary\` qué es lo que se ve, para poder pedirle al usuario el enlace correcto.
+- Si la evidencia NO corresponde a la ficha de un producto concreto (es un listado, una categoría, una portada o no aparece ningún precio), devuelve \`offers\` vacío y explica en \`summary\` qué es lo que se ve, para poder pedirle al usuario el enlace correcto.
 - En \`summary\`, resume en una o dos frases qué producto es y su precio, como se lo contarías al cliente.`;
+}
+
+/** Búsqueda anclada sobre una ficha concreta cuya web no se deja leer. */
+export function buildImportSearchPrompt(url: string, slugText: string): string {
+  return `Localiza en Internet esta ficha de producto concreta y dime qué producto es y cuánto cuesta HOY.
+
+URL DE LA FICHA
+${url}
+
+DESCRIPCIÓN DEDUCIDA DE LA PROPIA URL
+${slugText || '(la URL no describe el producto)'}
+
+Necesito, de ESTE producto exacto (no de alternativas): nombre comercial completo, marca, precio actual publicado en esa tienda (indicando si lleva IVA), unidad de venta, y características principales (medidas, potencia, material, formato…). Si la tienda muestra disponibilidad o plazo de entrega, anótalo. Si no encuentras el precio de esta ficha exacta, dilo explícitamente: no lo estimes.
+
+Responde en español, en texto breve y concreto.`;
 }
 
 /** Pasos 5-6: interpretación de la cantidad indicada por el usuario. */

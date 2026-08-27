@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  cleanProductUrl,
+  describeUrlSlug,
   extractPageEvidence,
   extractProductUrl,
   fetchProductPage,
@@ -47,6 +49,41 @@ describe('isSafeRemoteUrl', () => {
     expect(isSafeRemoteUrl('https://usuario:clave@tienda.es/x')).toBe(false);
     expect(isSafeRemoteUrl('ftp://tienda.es/x')).toBe(false);
     expect(isSafeRemoteUrl('https://sinpunto/x')).toBe(false);
+  });
+});
+
+// La URL real (con campaña publicitaria incluida) que falló en producción.
+const LEROY_CON_PUBLICIDAD =
+  'https://www.leroymerlin.es/productos/ventilador-de-techo-con-luz-silencioso-dc-22w-con-mando-107-cm-slipstream-lucci-air-negro-luz-calida-4-aspas-6-velocidades-modo-verano-invierno-recomendado-de-13-a-20m2-90713756.html' +
+  '?highlightedOfferCode=fe621af7&gclsrc=aw.ds&utm_medium=cpc&utm_source=google-pmax&gad_source=1&gbraid=0AAAA&gclid=CjwKCA';
+
+describe('cleanProductUrl', () => {
+  it('quita los parámetros publicitarios y deja la ficha limpia', () => {
+    const clean = cleanProductUrl(LEROY_CON_PUBLICIDAD);
+    expect(clean).toBe(
+      'https://www.leroymerlin.es/productos/ventilador-de-techo-con-luz-silencioso-dc-22w-con-mando-107-cm-slipstream-lucci-air-negro-luz-calida-4-aspas-6-velocidades-modo-verano-invierno-recomendado-de-13-a-20m2-90713756.html',
+    );
+  });
+
+  it('conserva los parámetros que sí forman parte del producto', () => {
+    expect(cleanProductUrl('https://tienda.es/p?variante=blanco&utm_source=x')).toBe(
+      'https://tienda.es/p?variante=blanco',
+    );
+  });
+});
+
+describe('describeUrlSlug', () => {
+  it('saca la descripción y la referencia de la propia dirección', () => {
+    const slug = describeUrlSlug(LEROY_CON_PUBLICIDAD);
+    expect(slug.text).toContain('ventilador de techo con luz');
+    expect(slug.text).toContain('lucci air');
+    expect(slug.reference).toBe('90713756');
+  });
+
+  it('sin referencia numérica devuelve sólo el texto', () => {
+    const slug = describeUrlSlug('https://tienda.es/ventilador-negro');
+    expect(slug.text).toBe('ventilador negro');
+    expect(slug.reference).toBeNull();
   });
 });
 

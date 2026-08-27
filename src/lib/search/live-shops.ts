@@ -44,6 +44,12 @@ export interface LivePage {
   domain: string;
   /** Evidencia destilada de la página: datos schema.org + texto visible. */
   evidence: string;
+  /**
+   * `true` si la página se descargó y leyó de verdad; `false` si la tienda
+   * bloquea la descarga y la evidencia procede del índice de Google (título
+   * y extracto de esa misma ficha).
+   */
+  fetched: boolean;
 }
 
 /** Fichas que se piden al buscador de cada tienda. */
@@ -77,10 +83,24 @@ export async function scrapeShops(
   const pages = await Promise.all(
     candidates.map(async (candidate) => {
       const page = await fetchProductPage(candidate.url, fetchImpl);
-      if (!page) return null;
-      const evidence = extractPageEvidence(page.html).slice(0, EVIDENCE_CHARS_PER_PAGE);
-      if (!evidence) return null;
-      return { url: page.finalUrl, domain: candidate.domain, evidence };
+      if (page) {
+        const evidence = extractPageEvidence(page.html).slice(0, EVIDENCE_CHARS_PER_PAGE);
+        if (evidence) {
+          return { url: page.finalUrl, domain: candidate.domain, evidence, fetched: true };
+        }
+      }
+
+      // La tienda bloquea la descarga (antibot) o la página no se dejó leer:
+      // se aprovecha lo que el índice de Google guarda de esa misma ficha,
+      // que es mejor que perder la tienda entera.
+      const snippet = candidate.snippet.trim();
+      if (!snippet) return null;
+      return {
+        url: candidate.url,
+        domain: candidate.domain,
+        evidence: `Título: ${candidate.title}\nExtracto del índice de Google: ${snippet}`,
+        fetched: false,
+      };
     }),
   );
 
@@ -103,15 +123,18 @@ function interleave<T>(groups: T[][]): T[] {
 export function formatLiveEvidence(pages: LivePage[]): string {
   if (pages.length === 0) return '';
 
-  const blocks = pages.map(
-    (page, index) =>
-      `--- FICHA EN VIVO ${index + 1} · ${page.domain}\nURL: ${page.url}\n${page.evidence}`,
-  );
+  const blocks = pages.map((page, index) => {
+    const label = page.fetched
+      ? `--- FICHA EN VIVO ${index + 1} · ${page.domain}`
+      : `--- FICHA DEL ÍNDICE ${index + 1} · ${page.domain} (la tienda bloquea la descarga directa; título y extracto del índice de Google)`;
+    return `${label}\nURL: ${page.url}\n${page.evidence}`;
+  });
 
   return (
     'FICHAS DESCARGADAS EN VIVO DE LAS TIENDAS (fuente principal: cada bloque ' +
     'es el contenido REAL de una ficha de producto leída ahora mismo de la web ' +
-    'de la tienda; sus URLs son literales y sus precios son los publicados hoy)\n' +
+    'de la tienda, o —si la tienda bloquea la descarga— lo que el índice de ' +
+    'Google guarda de esa ficha; las URLs son literales)\n' +
     blocks.join('\n')
   );
 }

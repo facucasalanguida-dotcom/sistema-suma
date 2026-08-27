@@ -23,7 +23,58 @@ const BROWSER_HEADERS: Record<string, string> = {
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
   'Accept-Language': 'es-ES,es;q=0.9',
+  Referer: 'https://www.google.com/',
+  'Upgrade-Insecure-Requests': '1',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'cross-site',
+  'Sec-Fetch-User': '?1',
+  'sec-ch-ua': '"Chromium";v="126", "Google Chrome";v="126", "Not-A.Brand";v="8"',
+  'sec-ch-ua-mobile': '?0',
+  'sec-ch-ua-platform': '"Windows"',
 };
+
+/** Parámetros de seguimiento publicitario que no forman parte del producto. */
+const TRACKING_PARAM = /^(utm_|gclid$|gclsrc$|gad_|gbraid$|wbraid$|fbclid$|msclkid$|dclid$|highlightedoffercode$)/i;
+
+/**
+ * Limpia la URL de los parámetros de campañas publicitarias (utm, gclid…):
+ * la ficha es la misma y el enlace queda legible y estable.
+ */
+export function cleanProductUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (TRACKING_PARAM.test(key)) parsed.searchParams.delete(key);
+    }
+    return parsed.toString().replace(/\?$/, '');
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Lo que la propia dirección cuenta del producto. Muchas tiendas ponen en la
+ * URL la descripción completa («ventilador-de-techo-con-luz…-90713756.html»),
+ * así que aunque la página bloquee la lectura, la URL ya identifica el
+ * producto y su referencia.
+ */
+export function describeUrlSlug(url: string): { text: string; reference: string | null } {
+  try {
+    const segments = new URL(url).pathname.split('/').filter(Boolean);
+    const last = segments[segments.length - 1] ?? '';
+    const base = last.replace(/\.[a-z0-9]+$/i, '');
+    const words = base.split(/[-_]+/).filter(Boolean);
+
+    const trailing = words[words.length - 1];
+    const reference = trailing && /^\d{5,}$/.test(trailing) ? trailing : null;
+
+    const text = (reference ? words.slice(0, -1) : words).join(' ').trim();
+    return { text, reference };
+  } catch {
+    return { text: '', reference: null };
+  }
+}
 
 /**
  * Extrae del mensaje la URL del producto, si el mensaje es eso: un enlace
