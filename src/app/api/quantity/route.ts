@@ -32,7 +32,10 @@ export async function POST(request: Request) {
 
   const { offer, phrase, wastePct } = payload;
 
-  const budget = createBudget();
+  // Presupuesto por debajo del límite de 30 s de esta función: permite el
+  // reintento corto ante un fallo transitorio, pero no la espera de 15 s del
+  // cupo por minuto, que aquí no cabría.
+  const budget = createBudget(22_000);
 
   let interpretation;
   try {

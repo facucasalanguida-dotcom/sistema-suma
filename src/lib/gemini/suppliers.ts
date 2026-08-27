@@ -2,9 +2,8 @@ import type { GenerateContentResponse } from '@google/genai';
 import {
   SEARCH_MODEL,
   UTILITY_MODEL,
+  callGemini,
   extractJson,
-  getGemini,
-  withTimeout,
   type RequestBudget,
 } from './client';
 import {
@@ -110,20 +109,17 @@ async function runGroundedSearch(
   queries: string[],
   budget?: RequestBudget,
 ): Promise<{ text: string; sources: GroundingSource[] }> {
-  const ai = getGemini();
-
-  const response = await withTimeout(
-    ai.models.generateContent({
+  const response = await callGemini(
+    {
       model: SEARCH_MODEL,
       contents: buildSearchPrompt(description, queries),
       config: {
         systemInstruction: BASE_SYSTEM,
         tools: [{ googleSearch: {} }],
         temperature: 0.3,
-        abortSignal: budget?.signal,
       },
-    }),
-    budget?.remaining(),
+    },
+    budget,
     'La búsqueda de proveedores',
   );
 
@@ -139,10 +135,8 @@ async function structureFindings(
   findings: string,
   budget?: RequestBudget,
 ): Promise<{ summary: string; offers: SupplierOffer[] }> {
-  const ai = getGemini();
-
-  const response = await withTimeout(
-    ai.models.generateContent({
+  const response = await callGemini(
+    {
       model: UTILITY_MODEL,
       contents: buildStructuringPrompt(description, findings),
       config: {
@@ -150,10 +144,9 @@ async function structureFindings(
         responseMimeType: 'application/json',
         responseSchema: offersResponseSchema,
         temperature: 0.1,
-        abortSignal: budget?.signal,
       },
-    }),
-    budget?.remaining(),
+    },
+    budget,
     'La estructuración de las ofertas',
   );
 
@@ -165,10 +158,8 @@ async function runKnowledgeOnlySearch(
   description: string,
   budget?: RequestBudget,
 ): Promise<{ summary: string; offers: SupplierOffer[] }> {
-  const ai = getGemini();
-
-  const response = await withTimeout(
-    ai.models.generateContent({
+  const response = await callGemini(
+    {
       model: SEARCH_MODEL,
       contents: buildKnowledgeOnlyPrompt(description),
       config: {
@@ -176,10 +167,9 @@ async function runKnowledgeOnlySearch(
         responseMimeType: 'application/json',
         responseSchema: offersResponseSchema,
         temperature: 0.4,
-        abortSignal: budget?.signal,
       },
-    }),
-    budget?.remaining(),
+    },
+    budget,
     'La búsqueda de proveedores',
   );
 

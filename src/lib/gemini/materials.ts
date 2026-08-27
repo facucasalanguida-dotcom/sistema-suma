@@ -1,11 +1,5 @@
 import type { Content, Part } from '@google/genai';
-import {
-  VISION_MODEL,
-  extractJson,
-  getGemini,
-  withTimeout,
-  type RequestBudget,
-} from './client';
+import { VISION_MODEL, callGemini, extractJson, type RequestBudget } from './client';
 import { MATERIAL_SYSTEM } from './prompts';
 import { materialRequestResponseSchema } from './schemas';
 import { materialRequestSchema, type ChatRequestPayload, type MaterialRequest } from '../types';
@@ -31,8 +25,6 @@ export async function interpretMaterial(
   payload: ChatRequestPayload,
   budget?: RequestBudget,
 ): Promise<MaterialRequest> {
-  const ai = getGemini();
-
   const parts: Part[] = [];
 
   if (payload.image) {
@@ -45,8 +37,8 @@ export async function interpretMaterial(
 
   const contents: Content[] = [{ role: 'user', parts }];
 
-  const response = await withTimeout(
-    ai.models.generateContent({
+  const response = await callGemini(
+    {
       model: VISION_MODEL,
       contents,
       config: {
@@ -54,10 +46,9 @@ export async function interpretMaterial(
         responseMimeType: 'application/json',
         responseSchema: materialRequestResponseSchema,
         temperature: 0.2,
-        abortSignal: budget?.signal,
       },
-    }),
-    budget?.remaining(),
+    },
+    budget,
     'La interpretación del material',
   );
 

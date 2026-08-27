@@ -1,10 +1,4 @@
-import {
-  UTILITY_MODEL,
-  extractJson,
-  getGemini,
-  withTimeout,
-  type RequestBudget,
-} from './client';
+import { UTILITY_MODEL, callGemini, extractJson, type RequestBudget } from './client';
 import { buildQuantitySystem } from './prompts';
 import { quantityResponseSchema } from './schemas';
 import { parseQuantity } from '../quantity-parser';
@@ -63,10 +57,8 @@ export async function interpretQuantity(
     };
   }
 
-  const ai = getGemini();
-
-  const response = await withTimeout(
-    ai.models.generateContent({
+  const response = await callGemini(
+    {
       model: UTILITY_MODEL,
       contents: buildQuantityPrompt(offer, phrase),
       config: {
@@ -74,10 +66,9 @@ export async function interpretQuantity(
         responseMimeType: 'application/json',
         responseSchema: quantityResponseSchema,
         temperature: 0.1,
-        abortSignal: options.budget?.signal,
       },
-    }),
-    options.budget?.remaining(),
+    },
+    options.budget,
     'La interpretación de la cantidad',
   );
 

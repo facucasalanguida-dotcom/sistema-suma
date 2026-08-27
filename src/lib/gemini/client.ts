@@ -130,6 +130,92 @@ export function extractJson(raw: string | undefined): unknown {
   }
 }
 
+/**
+ * Clasifica un fallo del modelo para decidir si merece reintento.
+ *
+ *  - `rate`: límite de peticiones (429 / RESOURCE_EXHAUSTED). En la capa
+ *    gratuita el cupo por minuto se repone solo: esperar y reintentar una vez
+ *    suele bastar.
+ *  - `transient`: el servicio sobrecargado o caído un instante (500/503).
+ *    Un reintento corto lo resuelve casi siempre.
+ *  - `fatal`: clave inválida, permisos, petición malformada… insistir no
+ *    arregla nada.
+ */
+export type GeminiFailure = 'rate' | 'transient' | 'fatal';
+
+export function classifyGeminiFailure(error: unknown): GeminiFailure {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(message)) return 'rate';
+  if (/503|UNAVAILABLE|overloaded|502|500|INTERNAL/i.test(message)) return 'transient';
+  return 'fatal';
+}
+
+/** Espera antes de reintentar, según el tipo de fallo. */
+const RETRY_WAIT_MS: Record<Exclude<GeminiFailure, 'fatal'>, number> = {
+  rate: 15_000,
+  transient: 2_500,
+};
+
+/** Margen que debe quedar tras la espera para que el reintento tenga sentido. */
+const RETRY_HEADROOM_MS = 10_000;
+
+/**
+ * Decide si procede reintentar. Pura y sin reloj, para poder probarla:
+ * devuelve los milisegundos a esperar, o `null` si no procede.
+ */
+export function retryDelay(
+  error: unknown,
+  attempt: number,
+  remainingMs: number,
+): number | null {
+  if (attempt >= 1) return null;
+  const failure = classifyGeminiFailure(error);
+  if (failure === 'fatal') return null;
+  const wait = RETRY_WAIT_MS[failure];
+  return remainingMs >= wait + RETRY_HEADROOM_MS ? wait : null;
+}
+
+export interface GeminiCallParams {
+  model: string;
+  contents: Parameters<GoogleGenAI['models']['generateContent']>[0]['contents'];
+  config?: Parameters<GoogleGenAI['models']['generateContent']>[0]['config'];
+}
+
+/**
+ * Llamada única a Gemini con presupuesto de tiempo y un reintento automático.
+ *
+ * Antes, un 429 de la capa gratuita —cuyo cupo por minuto se repone solo—
+ * tiraba toda la búsqueda al primer intento y el usuario veía «espera y
+ * vuelve a intentarlo». Si el presupuesto de la petición da para esperar y
+ * repetir, se hace aquí y el usuario ni se entera.
+ */
+export async function callGemini(
+  params: GeminiCallParams,
+  budget: { signal: AbortSignal; remaining: () => number } | undefined,
+  label: string,
+) {
+  const ai = getGemini();
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await withTimeout(
+        ai.models.generateContent({
+          model: params.model,
+          contents: params.contents,
+          config: { ...params.config, abortSignal: budget?.signal },
+        }),
+        budget?.remaining(),
+        label,
+      );
+    } catch (error) {
+      const wait = retryDelay(error, attempt, budget?.remaining() ?? Number.MAX_SAFE_INTEGER);
+      if (wait === null) throw error;
+      console.warn(`[suma] ${label}: ${classifyGeminiFailure(error)}, reintento en ${wait} ms`);
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+  }
+}
+
 /** Envuelve una promesa con un tiempo límite legible para el usuario. */
 export async function withTimeout<T>(
   promise: Promise<T>,
@@ -160,7 +246,11 @@ export function describeGeminiError(error: unknown): string {
     return 'La clave de Gemini no es válida. Revisa GEMINI_API_KEY en tu archivo .env.local.';
   }
   if (/quota|rate|429|RESOURCE_EXHAUSTED/i.test(message)) {
-    return 'Se ha alcanzado el límite de peticiones de Gemini. Espera unos segundos y vuelve a intentarlo.';
+    return (
+      'Se ha alcanzado el límite de peticiones de Gemini, incluso tras reintentar. ' +
+      'Si pasa a menudo, la clave está en la capa gratuita: activando la facturación ' +
+      'del proyecto en Google Cloud el límite se multiplica y esto desaparece.'
+    );
   }
   if (/timeout|tiempo máximo/i.test(message)) {
     return message;
