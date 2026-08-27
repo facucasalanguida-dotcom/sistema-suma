@@ -101,10 +101,19 @@ export const useProjectsStore = create<ProjectsState>()(
       },
 
       saveBudgetToProject(projectId, budget) {
+        // Las partidas se renumeran con el identificador del presupuesto
+        // guardado. Sin esto, guardar el mismo presupuesto dos veces en la
+        // misma obra repetiría los identificadores y tachar una partida en
+        // «Pagos» tacharía también su gemela.
+        const stored: SavedBudget = {
+          ...budget,
+          lines: budget.lines.map((line) => ({ ...line, id: `${budget.id}::${line.id}` })),
+        };
+
         set((state) => ({
           projects: state.projects.map((project) =>
             project.id === projectId
-              ? { ...project, budgets: [budget, ...project.budgets] }
+              ? { ...project, budgets: [stored, ...project.budgets] }
               : project,
           ),
         }));

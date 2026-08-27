@@ -124,7 +124,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
     if (!savedReference) return;
 
     const snapshot: SavedBudget = {
-      id: `${savedReference}-${Date.now().toString(36)}`,
+      id: `${savedReference}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
       reference: savedReference,
       savedAt: new Date().toISOString(),
       clientName: client.name,
