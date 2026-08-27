@@ -45,6 +45,7 @@ afterEach(() => {
   delete process.env.SUMA_ACCESS_PASSWORD;
   delete process.env.SESSION_SECRET;
   delete process.env.SUMA_FORZAR_ACCESO;
+  delete process.env.SUMA_USUARIOS;
   delete process.env.VERCEL;
 });
 
@@ -188,6 +189,33 @@ describe('despliegue sin acceso configurado', () => {
 
     expect(response.status).toBe(503);
     expect(await response.text()).toContain('SESSION_SECRET');
+  });
+
+  /**
+   * El tropiezo real de la primera puesta en marcha: se pegan las cuentas y
+   * se olvida la clave que las firma. El mensaje tiene que decir ESO, no un
+   * genérico que obligue a adivinar cuál de las dos variables falta.
+   */
+  it('si están las cuentas pero falta la clave, lo dice con nombre y apellidos', async () => {
+    process.env.VERCEL = '1';
+    process.env.SUMA_USUARIOS = 'W3sidXN1YXJpbyI6ImZhY3UifV0=';
+
+    const response = await proxy(request());
+    const texto = await response.text();
+
+    expect(response.status).toBe(503);
+    expect(texto).toContain('SESSION_SECRET');
+    expect(texto).toContain('SUMA_USUARIOS');
+    expect(texto).toContain('Environment Variables');
+  });
+
+  it('una clave corta se distingue de una clave ausente', async () => {
+    process.env.VERCEL = '1';
+    process.env.SESSION_SECRET = 'corta';
+
+    const texto = await (await proxy(request())).text();
+    expect(texto).toContain('demasiado corta');
+    expect(texto).toContain('32');
   });
 
   it('con la contraseña compartida puesta, el despliegue sí funciona', async () => {

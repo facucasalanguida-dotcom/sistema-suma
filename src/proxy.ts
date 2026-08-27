@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import {
   SESSION_COOKIE,
   authIsConfigured,
-  authMisconfigured,
+  misconfigurationReason,
   verifySessionToken,
 } from '@/lib/auth/session';
 
@@ -29,6 +29,28 @@ import {
 const PUBLIC_PATHS = ['/acceso', '/api/auth/'];
 
 const REALM = 'Presupuestos SUMA';
+
+/** Un mensaje por cada forma de dejar el acceso a medio configurar. */
+const MISCONFIG_MESSAGES = {
+  'faltan-cuentas':
+    'Falta la clave que firma las sesiones.\n\n' +
+    'Las cuentas (SUMA_USUARIOS) están puestas, pero sin SESSION_SECRET no ' +
+    'sirven: es la clave con la que se firma la sesión de cada persona.\n\n' +
+    'En Vercel: Settings -> Environment Variables -> añade SESSION_SECRET con ' +
+    'un texto largo y aleatorio (mínimo 32 caracteres) y vuelve a desplegar.',
+
+  'clave-corta':
+    'La clave SESSION_SECRET es demasiado corta.\n\n' +
+    'Necesita al menos 32 caracteres. Con una más corta, la firma de las ' +
+    'sesiones sería fácil de romper, así que el sistema prefiere no arrancar ' +
+    'antes que dar una seguridad aparente.\n\n' +
+    'Alárgala en Vercel y vuelve a desplegar.',
+
+  'sin-puerta':
+    'Este sistema todavía no tiene configurado el acceso.\n\n' +
+    'Define SESSION_SECRET (y crea la primera cuenta en /acceso/alta) o, de ' +
+    'momento, SUMA_ACCESS_PASSWORD.',
+} as const;
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -120,23 +142,20 @@ export async function proxy(request: NextRequest) {
   }
 
   /* ── Desplegado pero sin ninguna puerta ──────────────────────────────── */
-  if (authMisconfigured()) {
+  const problema = misconfigurationReason();
+  if (problema) {
     // Antes esto dejaba pasar a cualquiera. Una variable olvidada en el
     // despliegue no puede traducirse en una aplicación abierta al mundo con
-    // una clave de IA de pago detrás: se cierra y se explica qué falta.
-    return new NextResponse(
-      'Este sistema no tiene bien configurado el acceso.\n\n' +
-        'Define SESSION_SECRET con al menos 32 caracteres (y crea la primera ' +
-        'cuenta en /acceso/alta) o, de momento, SUMA_ACCESS_PASSWORD.',
-      {
-        status: 503,
-        headers: {
-          'Content-Type': 'text/plain; charset=utf-8',
-          'Cache-Control': 'no-store',
-          'Content-Security-Policy': csp,
-        },
+    // una clave de IA de pago detrás: se cierra y se explica qué falta,
+    // distinguiendo el caso concreto para no obligar a adivinar.
+    return new NextResponse(MISCONFIG_MESSAGES[problema], {
+      status: 503,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store',
+        'Content-Security-Policy': csp,
       },
-    );
+    });
   }
 
   // Sin nada configurado y sin desplegar: desarrollo local y pruebas.

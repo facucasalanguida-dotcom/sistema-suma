@@ -134,12 +134,29 @@ export function isDeployed(): boolean {
  *     la seguridad no puede acabar en menos seguridad de la esperada.
  */
 export function authMisconfigured(): boolean {
-  if (!isDeployed()) return false;
+  return misconfigurationReason() !== null;
+}
+
+/**
+ * Qué falta exactamente, para poder decírselo a quien despliega en lugar de
+ * dejarle un mensaje genérico delante de una aplicación que no arranca.
+ */
+export function misconfigurationReason():
+  | 'clave-corta'
+  | 'faltan-cuentas'
+  | 'sin-puerta'
+  | null {
+  if (!isDeployed()) return null;
 
   const secret = process.env.SESSION_SECRET;
-  if (secret !== undefined && secret.length > 0 && secret.length < 32) return true;
+  if (secret !== undefined && secret.length > 0 && secret.length < 32) return 'clave-corta';
 
-  return !authIsConfigured() && !process.env.SUMA_ACCESS_PASSWORD;
+  if (authIsConfigured()) return null;
+  if (process.env.SUMA_ACCESS_PASSWORD) return null;
+
+  // El caso más frecuente al migrar: se pegan las cuentas y se olvida la
+  // clave que firma las sesiones. Sin ella, esas cuentas no sirven de nada.
+  return process.env.SUMA_USUARIOS?.trim() ? 'faltan-cuentas' : 'sin-puerta';
 }
 
 async function sign(payload: JWTPayload, maxAgeSeconds: number): Promise<string> {
