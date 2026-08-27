@@ -10,7 +10,7 @@ Hablas siempre en español de España y usas la terminología real del sector de
 Reglas que no se negocian:
 - Nunca inventes un precio y lo presentes como verificado. Si un precio no procede de una fuente consultada, márcalo como estimado.
 - Nunca inventes un proveedor. Si no localizas uno concreto, usa un distribuidor real con presencia en ${searchScope.province}.
-- Los precios son SIEMPRE sin IVA salvo que la fuente diga lo contrario, y entonces lo marcas.
+- Copia cada precio EXACTAMENTE como lo publica la fuente (el mismo número) y marca si incluye IVA. NUNCA conviertas un precio entre con IVA y sin IVA, ni lo redondees, ni lo "normalices": de esa conversión se encarga el sistema con aritmética exacta.
 - Sé concreto con las unidades. En construcción, confundir el precio por m² con el precio por caja arruina un presupuesto.`;
 
 /** Paso 2: interpretación del material solicitado. */
@@ -82,7 +82,7 @@ INSTRUCCIONES
 - Si el informe incluye una sección de RESULTADOS DE LA BÚSQUEDA PROGRAMÁTICA, esas URLs también vienen literales de la API de Google: cuando una opción se corresponda con una de esas fichas, usa exactamente esa URL como \`sourceUrl\`.
 - El resto del informe complementa a las fichas en vivo: sirve para añadir opciones de proveedores que no tienen ficha leída (almacenes locales, material a granel), no para duplicar las que ya la tienen.
 - Descarta las opciones que el informe señale como descatalogadas, agotadas o no disponibles actualmente.
-- \`price\` es el precio de UNA unidad de venta. \`saleUnit\` debe ser una de: ${SALE_UNITS.join(', ')}.
+- \`price\` es el precio de UNA unidad de venta, copiado TAL CUAL lo da el informe (el mismo número); \`priceIncludesVat\` indica si ese número incluye el IVA. Jamás dividas ni multipliques un precio para quitarle o ponerle el IVA. \`saleUnit\` debe ser una de: ${SALE_UNITS.join(', ')}.
 - \`coverageValue\` y \`coverageUnit\` expresan cuánta magnitud medible rinde UNA unidad de venta:
   · Si el precio ya es por m², por metro, por kg, por m³ o por unidad → coverageValue = 1 y coverageUnit coincide con saleUnit.
   · Caja de porcelánico con 4 piezas de 60×60 cm → coverageValue = 1.44, coverageUnit = m2.
@@ -122,7 +122,8 @@ export function buildImportPrompt(
   const confidenceRule =
     mode === 'pagina'
       ? `- \`confidence\` = "alta": la ficha se ha leído directamente.`
-      : `- \`confidence\` = "alta" sólo si el precio aparece en un extracto del índice o de la búsqueda referido a ESTA ficha; "media" si procede de una fuente menos directa. Si no encuentras ningún precio para este producto, devuelve \`offers\` vacío y dilo en \`summary\`: jamás te inventes el precio.`;
+      : `- \`confidence\` = "alta" sólo si el precio aparece en un extracto del índice o de la búsqueda referido a ESTA ficha; "media" si procede de una fuente menos directa. Si no encuentras ningún precio para este producto, devuelve \`offers\` vacío y dilo en \`summary\`: jamás te inventes el precio.
+- CUIDADO: la oferta debe ser EL MISMO producto que describe la URL (misma marca y mismo modelo). Si la evidencia sólo habla de productos parecidos o alternativos, devuelve \`offers\` vacío y explica en \`summary\` que no hay datos fiables de esa ficha concreta.`;
 
   return `${origin}
 
@@ -134,7 +135,7 @@ ${evidence}
 
 INSTRUCCIONES
 - La evidencia describe UN producto: devuelve exactamente una oferta en \`offers\` con sus datos reales (nombre comercial, marca, precio con su unidad de venta, y el rendimiento por unidad de venta).
-- Usa sólo lo que dice la evidencia. El precio debe ser el publicado; indica en \`priceIncludesVat\` si es PVP con IVA (en tiendas al público casi siempre lo es).
+- Usa sólo lo que dice la evidencia. \`price\` es EXACTAMENTE el número publicado (cópialo tal cual, sin convertirlo ni redondearlo) e indica en \`priceIncludesVat\` si incluye el IVA (en tiendas al público casi siempre lo incluye). El sistema se encarga de la conversión a base imponible.
 ${confidenceRule}
 - Deja \`sourceUrl\` vacío: el sistema ya conoce la URL y la pondrá él.
 - Si la evidencia NO corresponde a la ficha de un producto concreto (es un listado, una categoría, una portada o no aparece ningún precio), devuelve \`offers\` vacío y explica en \`summary\` qué es lo que se ve, para poder pedirle al usuario el enlace correcto.
@@ -151,7 +152,7 @@ ${url}
 DESCRIPCIÓN DEDUCIDA DE LA PROPIA URL
 ${slugText || '(la URL no describe el producto)'}
 
-Necesito, de ESTE producto exacto (no de alternativas): nombre comercial completo, marca, precio actual publicado en esa tienda (indicando si lleva IVA), unidad de venta, y características principales (medidas, potencia, material, formato…). Si la tienda muestra disponibilidad o plazo de entrega, anótalo. Si no encuentras el precio de esta ficha exacta, dilo explícitamente: no lo estimes.
+Necesito, de ESTE producto exacto (no de alternativas): nombre comercial completo, marca, precio actual publicado en esa tienda (el número tal cual, indicando si lleva IVA), unidad de venta, y características principales (medidas, potencia, material, formato…). Si la tienda muestra disponibilidad o plazo de entrega, anótalo. Si no encuentras el precio de esta ficha exacta, dilo explícitamente: no lo estimes. Y si sólo encuentras productos parecidos de otras marcas o tiendas, dilo también: no los describas como si fueran esta ficha.
 
 Responde en español, en texto breve y concreto.`;
 }

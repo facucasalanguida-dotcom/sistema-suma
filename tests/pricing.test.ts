@@ -5,6 +5,7 @@ import {
   buildReference,
   computeLinePrice,
   computeTotals,
+  unitPriceExVat,
   validUntil,
 } from '@/lib/pricing';
 import type { BudgetLine, SupplierOffer } from '@/lib/types';
@@ -33,7 +34,34 @@ function offer(overrides: Partial<SupplierOffer> = {}): SupplierOffer {
   };
 }
 
+describe('unitPriceExVat', () => {
+  it('un precio sin IVA se queda tal cual', () => {
+    expect(unitPriceExVat({ price: 12.4, priceIncludesVat: false })).toBe(12.4);
+  });
+
+  it('un PVP con IVA se convierte a base imponible con el 21 %', () => {
+    // El caso real: la tienda publica 60,99 € IVA incluido (60,99 / 1,21).
+    expect(unitPriceExVat({ price: 60.99, priceIncludesVat: true })).toBe(50.4);
+  });
+});
+
 describe('computeLinePrice', () => {
+  it('un precio con IVA se presupuesta por su base imponible', () => {
+    const result = computeLinePrice(
+      offer({
+        price: 60.99,
+        priceIncludesVat: true,
+        saleUnit: 'ud',
+        coverage: { value: 1, unit: 'ud', note: null },
+      }),
+      { value: 2, unit: 'ud' },
+    );
+    expect(result.unitPrice).toBe(50.4);
+    expect(result.lineTotal).toBeCloseTo(100.8, 2);
+    expect(result.explanation).toContain('60,99');
+    expect(result.explanation).toContain('con IVA');
+  });
+
   it('convierte m² a cajas y redondea hacia arriba', () => {
     const result = computeLinePrice(offer(), { value: 24, unit: 'm2' });
     expect(result.saleUnitsExact).toBeCloseTo(16.667, 3);

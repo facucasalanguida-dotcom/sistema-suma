@@ -16,6 +16,7 @@ import { QuantityPrompt } from './QuantityPrompt';
 import { Badge } from '@/components/ui/Badge';
 import { SumaLogo } from '@/components/brand/SumaLogo';
 import { formatCurrency, formatPrecise, formatTime } from '@/lib/format';
+import { unitPriceExVat } from '@/lib/pricing';
 import { EXPLORE_SHOPS, shopSearchUrl } from '@/lib/search/fallback-link';
 import type { ChatMessage, SupplierOffer } from '@/lib/types';
 import { saleUnitLabel } from '@/lib/units';
@@ -371,7 +372,8 @@ function findCheapest(offers: SupplierOffer[]): Set<string> {
     const key = `${offer.group ?? 'general'}|${offer.coverage.unit}`;
     counts.set(key, (counts.get(key) ?? 0) + 1);
 
-    const unitPrice = offer.price / offer.coverage.value;
+    // Comparación en base sin IVA, para no enfrentar un PVP con una tarifa neta.
+    const unitPrice = unitPriceExVat(offer) / offer.coverage.value;
     const current = best.get(key);
     if (!current || unitPrice < current.unitPrice) {
       best.set(key, { id: offer.id, unitPrice });

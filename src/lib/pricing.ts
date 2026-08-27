@@ -34,6 +34,22 @@ export const REDUCED_VAT_PCT = 10;
 export class PricingError extends Error {}
 
 /**
+ * Precio de UNA unidad de venta SIN IVA.
+ *
+ * Las tiendas al público publican PVP con IVA; el presupuesto trabaja siempre
+ * sobre bases imponibles y añade el IVA al final. La extracción se hace aquí,
+ * con el tipo general del 21 % que grava la venta de materiales, y NUNCA la
+ * hace la IA: la instrucción del modelo es copiar el precio tal cual lo
+ * publica la fuente y marcar si incluye IVA.
+ */
+export function unitPriceExVat(
+  offer: Pick<SupplierOffer, 'price' | 'priceIncludesVat'>,
+): number {
+  if (!offer.priceIncludesVat) return round2(offer.price);
+  return round2(offer.price / (1 + DEFAULT_VAT_PCT / 100));
+}
+
+/**
  * Convierte la cantidad pedida por el usuario a unidades de venta y calcula el
  * importe de la línea.
  *
@@ -72,7 +88,7 @@ export function computeLinePrice(
   const saleUnits = discrete ? Math.ceil(round3(saleUnitsExact)) : round3(saleUnitsExact);
   const roundedUp = discrete && saleUnits > round3(saleUnitsExact);
 
-  const unitPrice = round2(offer.price);
+  const unitPrice = unitPriceExVat(offer);
   const lineTotal = multiplyMoney(saleUnits, unitPrice);
 
   return {
@@ -158,6 +174,13 @@ function explain(offer: SupplierOffer, requested: QuantityInput, ctx: ExplainCon
 
   if (steps.length > 0) {
     parts.push(`${capitalize(steps.join('; '))}.`);
+  }
+
+  if (offer.priceIncludesVat) {
+    parts.push(
+      `El precio de tienda (${fmtEur(offer.price)} con IVA) equivale a ` +
+        `${fmtEur(ctx.unitPrice)} sin IVA, que es como se presupuesta.`,
+    );
   }
 
   parts.push(

@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatPrecise } from '@/lib/format';
+import { unitPriceExVat } from '@/lib/pricing';
 import { productSearchUrl, siteDomain } from '@/lib/search/fallback-link';
 import type { SupplierOffer } from '@/lib/types';
 import { measureLabel, saleUnitLabel, saleUnitAsMeasure } from '@/lib/units';
@@ -74,9 +75,13 @@ export function OfferCard({
   const saleLabel = saleUnitLabel(offer.saleUnit);
   const coverageLabel = measureLabel(offer.coverage.unit);
 
-  // Precio normalizado por unidad de medida: es lo único que permite comparar
-  // de verdad una caja de 1,44 m² con un precio por metro cuadrado.
-  const normalizedPrice = offer.coverage.value > 0 ? offer.price / offer.coverage.value : null;
+  // El presupuesto trabaja siempre sin IVA: si la tienda publica PVP con IVA,
+  // se enseña también la base imponible para que no haya sorpresas.
+  const netPrice = unitPriceExVat(offer);
+
+  // Precio normalizado por unidad de medida (sin IVA): es lo único que
+  // permite comparar de verdad una caja de 1,44 m² con un precio por m².
+  const normalizedPrice = offer.coverage.value > 0 ? netPrice / offer.coverage.value : null;
   const showNormalized =
     normalizedPrice !== null &&
     !(saleUnitAsMeasure(offer.saleUnit) === offer.coverage.unit && offer.coverage.value === 1);
@@ -109,12 +114,17 @@ export function OfferCard({
               por {saleLabel}
               {offer.priceIncludesVat ? ' · IVA incl.' : ' · sin IVA'}
             </p>
+            {offer.priceIncludesVat ? (
+              <p className="mt-0.5 text-[11px] text-suma-faint tabular-nums">
+                = {formatCurrency(netPrice)} sin IVA
+              </p>
+            ) : null}
           </div>
         </div>
 
         {showNormalized ? (
           <p className="-mt-1 text-right text-[11px] font-medium text-suma-red tabular-nums">
-            ≈ {formatCurrency(normalizedPrice)} / {coverageLabel}
+            ≈ {formatCurrency(normalizedPrice)} / {coverageLabel} sin IVA
           </p>
         ) : null}
 
