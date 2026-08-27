@@ -8,6 +8,7 @@ import {
   ExternalLink,
   MapPin,
   Plus,
+  Search,
   ShoppingCart,
   Store,
   Truck,
@@ -15,6 +16,7 @@ import {
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatPrecise } from '@/lib/format';
+import { productSearchUrl, siteDomain } from '@/lib/search/fallback-link';
 import type { SupplierOffer } from '@/lib/types';
 import { measureLabel, saleUnitLabel, saleUnitAsMeasure } from '@/lib/units';
 import { cn } from '@/lib/cn';
@@ -213,20 +215,25 @@ export function OfferCard({
             <ExternalLink className="size-3" aria-hidden />
           </a>
         ) : (
-          <p className="flex items-center gap-1.5 text-[11px] text-suma-faint">
-            <CircleAlert className="size-3 shrink-0" aria-hidden />
-            Sin ficha enlazada: confirma precio y disponibilidad con {offer.supplier.name}
-            {offer.supplier.website ? (
-              <a
-                href={`https://${offer.supplier.website.replace(/^https?:\/\//, '')}`}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="font-medium text-suma-muted underline underline-offset-2 hover:text-suma-ink"
-              >
-                {offer.supplier.website}
-              </a>
-            ) : null}
-          </p>
+          <div className="flex flex-col gap-1.5">
+            <a
+              href={productSearchUrl(offer)}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-lg bg-suma-high text-[13px] font-semibold text-suma-ink ring-1 ring-suma-border transition-colors ring-inset hover:text-suma-red-bright hover:ring-suma-red"
+              title="No hay ficha directa: este enlace busca el producto para que no tengas que teclearlo."
+            >
+              <Search className="size-3.5" aria-hidden />
+              Buscar este producto en{' '}
+              {siteDomain(offer.supplier.website) ?? 'Google'}
+              <ExternalLink className="size-3" aria-hidden />
+            </a>
+            <p className="flex items-start gap-1.5 text-[11px] text-suma-faint">
+              <CircleAlert className="mt-0.5 size-3 shrink-0" aria-hidden />
+              Sin ficha directa del producto: confirma precio y disponibilidad con{' '}
+              {offer.supplier.name}
+            </p>
+          </div>
         )}
 
         <div className="flex items-center justify-between gap-2">

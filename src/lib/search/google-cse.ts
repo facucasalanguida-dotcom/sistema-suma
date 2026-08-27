@@ -103,7 +103,10 @@ export async function searchProductPages(queries: string[]): Promise<CseResult[]
   return results;
 }
 
-async function runQuery(query: string): Promise<z.infer<typeof cseResponseSchema>['items']> {
+async function runQuery(
+  query: string,
+  extraParams: Record<string, string> = {},
+): Promise<z.infer<typeof cseResponseSchema>['items']> {
   const url = new URL(ENDPOINT);
   url.searchParams.set('key', process.env.GOOGLE_CSE_API_KEY ?? '');
   url.searchParams.set('cx', process.env.GOOGLE_CSE_ID ?? '');
@@ -111,6 +114,9 @@ async function runQuery(query: string): Promise<z.infer<typeof cseResponseSchema
   url.searchParams.set('num', '10');
   url.searchParams.set('gl', 'es');
   url.searchParams.set('hl', 'es');
+  for (const [key, value] of Object.entries(extraParams)) {
+    url.searchParams.set(key, value);
+  }
 
   for (let attempt = 0; attempt <= RETRIES_PER_QUERY; attempt += 1) {
     try {
@@ -142,6 +148,37 @@ async function runQuery(query: string): Promise<z.infer<typeof cseResponseSchema
     }
   }
   return [];
+}
+
+/**
+ * Busca la ficha de UN producto dentro de la web de UN proveedor concreto.
+ *
+ * Es el rescate de las ofertas que llegan sin enlace: en lugar de enseñar la
+ * portada de la tienda, se le pregunta al índice de Google si esa tienda
+ * tiene una página para ese producto. Devuelve la primera ficha real (https,
+ * no portada, del dominio pedido) o `null` si no existe.
+ */
+export async function findProductPageOnSite(
+  query: string,
+  domain: string,
+): Promise<CseResult | null> {
+  if (!isCseConfigured() || !query.trim() || !domain.includes('.')) return null;
+
+  const items = await runQuery(query, { siteSearch: domain, siteSearchFilter: 'i', num: '5' });
+  const allowed = new Set([domain.toLowerCase()]);
+
+  for (const item of items) {
+    const parsed = parseShopUrl(item.link, allowed);
+    if (!parsed) continue;
+    return {
+      title: item.title.trim(),
+      url: item.link,
+      snippet: item.snippet.replace(/\s+/g, ' ').trim(),
+      domain: parsed.domain,
+    };
+  }
+
+  return null;
 }
 
 class RetryableError extends Error {}

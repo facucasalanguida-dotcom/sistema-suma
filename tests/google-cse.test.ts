@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   allowedShopDomains,
+  findProductPageOnSite,
   formatCseEvidence,
   isCseConfigured,
   searchProductPages,
@@ -139,6 +140,46 @@ describe('búsqueda', () => {
 
     await searchProductPages(['a', 'b', 'c', 'd', 'e']);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('rescate de la ficha dentro de la web del proveedor', () => {
+  it('acota la consulta al dominio y devuelve la primera ficha real', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      jsonResponse({
+        items: [
+          item('https://www.optimusferreteria.com/'),
+          item('https://www.otratienda.es/ventilador-edm-107'),
+          item('https://www.optimusferreteria.com/ventilador-techo-edm-107cm'),
+        ],
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await findProductPageOnSite('EDM ventilador 107', 'optimusferreteria.com');
+    expect(result?.url).toBe('https://www.optimusferreteria.com/ventilador-techo-edm-107cm');
+
+    const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    expect(calledUrl.searchParams.get('siteSearch')).toBe('optimusferreteria.com');
+    expect(calledUrl.searchParams.get('siteSearchFilter')).toBe('i');
+  });
+
+  it('sin ficha en esa tienda devuelve null', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse({ items: [item('https://www.otratienda.es/x')] })),
+    );
+    expect(await findProductPageOnSite('cemento', 'optimusferreteria.com')).toBeNull();
+  });
+
+  it('sin configuración o sin dominio válido no llama a la red', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    expect(await findProductPageOnSite('cemento', 'sin-punto')).toBeNull();
+    vi.stubEnv('GOOGLE_CSE_API_KEY', '');
+    expect(await findProductPageOnSite('cemento', 'obramat.es')).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

@@ -14,7 +14,13 @@ import {
 } from './prompts';
 import { offersResponseSchema } from './schemas';
 import { searchDemoCatalog } from '../demo/catalog';
-import { formatCseEvidence, searchProductPages } from '../search/google-cse';
+import {
+  findProductPageOnSite,
+  formatCseEvidence,
+  isCseConfigured,
+  searchProductPages,
+} from '../search/google-cse';
+import { productSearchTerms, siteDomain } from '../search/fallback-link';
 import {
   VERIFY_DEFAULT_REMAINING_MS,
   canonicalUrl,
@@ -129,6 +135,26 @@ export async function searchSuppliers(
     }
   }
 
+  const indexed = new Set<string>();
+  for (const result of cseResults) {
+    const canonical = canonicalUrl(result.url);
+    if (canonical) indexed.add(canonical);
+  }
+
+  // Rescate de enlaces: a las ofertas que llegan sin ficha se les pregunta al
+  // índice de Google si la web de SU proveedor tiene una página para ese
+  // producto. Si aparece, la oferta gana su enlace directo; si no, la
+  // interfaz enseñará una búsqueda del producto en la tienda, nunca la
+  // portada.
+  if (!demoMode) {
+    const recovered = await recoverMissingLinks(offers, budget);
+    for (const url of recovered.values()) {
+      const canonical = canonicalUrl(url);
+      if (canonical) indexed.add(canonical);
+    }
+    offers = attachRecoveredLinks(offers, recovered);
+  }
+
   // Último control de calidad antes de responder: se comprueba en vivo que
   // cada ficha enlazada sigue existiendo. Los enlaces muertos se retiran y
   // los confirmados (por respuesta directa o por estar en el índice de la
@@ -139,15 +165,92 @@ export async function searchSuppliers(
       offers.map((offer) => offer.sourceUrl),
       cap,
     );
-    const indexed = new Set<string>();
-    for (const result of cseResults) {
-      const canonical = canonicalUrl(result.url);
-      if (canonical) indexed.add(canonical);
-    }
     offers = applyLinkVerification(offers, statuses, indexed);
   }
 
   return { summary, offers, sources, demoMode };
+}
+
+/** Reparto de tiempo del rescate: sólo se intenta con hueco de sobra. */
+const RECOVERY_CAP_MS = 7_000;
+const RECOVERY_RESERVE_MS = 10_000;
+const RECOVERY_MIN_WORTH_MS = 2_000;
+/** Ofertas sin enlace que se intentan rescatar como máximo. */
+const RECOVERY_MAX_OFFERS = 4;
+
+/** Tope para el rescate de enlaces, o `null` si no queda tiempo digno. */
+export function recoveryCap(remainingMs: number): number | null {
+  const cap = Math.min(RECOVERY_CAP_MS, remainingMs - RECOVERY_RESERVE_MS);
+  return cap >= RECOVERY_MIN_WORTH_MS ? cap : null;
+}
+
+/**
+ * Qué ofertas se pueden rescatar y con qué consulta: las que no traen ficha
+ * pero cuyo proveedor sí tiene web donde buscarla.
+ */
+export function linkRecoveryTargets(
+  offers: SupplierOffer[],
+): Array<{ id: string; query: string; domain: string }> {
+  const targets: Array<{ id: string; query: string; domain: string }> = [];
+  for (const offer of offers) {
+    if (offer.sourceUrl) continue;
+    const domain = siteDomain(offer.supplier.website);
+    if (!domain) continue;
+    const query = productSearchTerms(offer);
+    if (!query) continue;
+    targets.push({ id: offer.id, query, domain });
+    if (targets.length >= RECOVERY_MAX_OFFERS) break;
+  }
+  return targets;
+}
+
+/** Aplica los enlaces rescatados (id de oferta → URL de la ficha). */
+export function attachRecoveredLinks(
+  offers: SupplierOffer[],
+  recovered: Map<string, string>,
+): SupplierOffer[] {
+  if (recovered.size === 0) return offers;
+  return offers.map((offer) => {
+    const url = recovered.get(offer.id);
+    return url ? { ...offer, sourceUrl: url } : offer;
+  });
+}
+
+/**
+ * Busca en paralelo la ficha de cada oferta sin enlace dentro de la web de su
+ * proveedor. Si el tiempo se agota, se abandona lo que falte: el rescate es
+ * un extra, no puede convertir una búsqueda buena en un timeout.
+ */
+async function recoverMissingLinks(
+  offers: SupplierOffer[],
+  budget?: RequestBudget,
+): Promise<Map<string, string>> {
+  const recovered = new Map<string, string>();
+  if (!isCseConfigured()) return recovered;
+
+  const targets = linkRecoveryTargets(offers);
+  if (targets.length === 0) return recovered;
+
+  const cap = recoveryCap(budget?.remaining() ?? RECOVERY_CAP_MS + RECOVERY_RESERVE_MS);
+  if (cap === null) return recovered;
+
+  const lookups = Promise.all(
+    targets.map(async (target) => {
+      try {
+        const page = await findProductPageOnSite(target.query, target.domain);
+        if (page) recovered.set(target.id, page.url);
+      } catch {
+        // El rescate nunca rompe la búsqueda.
+      }
+    }),
+  );
+
+  await Promise.race([
+    lookups,
+    new Promise<void>((resolve) => setTimeout(resolve, cap)),
+  ]);
+
+  return recovered;
 }
 
 /**
