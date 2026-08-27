@@ -100,6 +100,22 @@ El catálogo de demostración lleva también fichas reales localizadas por
 búsqueda con verificación cruzada. Los catálogos de las tiendas cambian: si un
 enlace muere, se actualiza en `src/lib/demo/catalog.ts`.
 
+### La capa de búsqueda programática (opcional)
+
+Con `GOOGLE_CSE_API_KEY` y `GOOGLE_CSE_ID` configuradas, cada búsqueda lanza
+además —en paralelo, sin añadir latencia— consultas a la **API oficial de
+Google Custom Search**, que devuelve fichas de producto con URL literal. Esa
+evidencia se suma al informe del grounding antes de estructurar, con lo que
+aparecen más opciones y todas con enlace de la propia API.
+
+Se eligió la API oficial y no *scraping* del buscador a propósito: raspar el
+HTML de Google lo bloquean los captchas, lo rompe cada rediseño y lo prohíben
+sus condiciones de uso — es lo contrario de fiable. La capa programática está
+construida para degradar limpio: reintentos con espera creciente sólo ante
+errores transitorios, validación estricta de la respuesta, filtro a dominios
+de tiendas reales, deduplicación por ficha, y si todo falla la búsqueda con
+grounding sigue funcionando sola (`src/lib/search/google-cse.ts`).
+
 ### Por qué la búsqueda son dos llamadas
 
 La API de Gemini no admite anclaje en Google Search y salida JSON estructurada

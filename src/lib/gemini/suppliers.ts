@@ -15,6 +15,7 @@ import {
 } from './prompts';
 import { offersResponseSchema } from './schemas';
 import { searchDemoCatalog } from '../demo/catalog';
+import { formatCseEvidence, searchProductPages } from '../search/google-cse';
 import {
   supplierOfferSchema,
   type GroundingSource,
@@ -46,15 +47,37 @@ export async function searchSuppliers(
 ): Promise<SupplierSearchResult> {
   const description = describeMaterial(request);
 
-  let findings = '';
-  let sources: GroundingSource[] = [];
+  // Dos fuentes en paralelo, para que la segunda no añada latencia:
+  //  - el grounding de Gemini sobre Google Search (razonamiento + fuentes), y
+  //  - la búsqueda programática con la API oficial de Google Custom Search,
+  //    que aporta más fichas de producto con URL literal. Cada una puede
+  //    fallar sin arrastrar a la otra.
+  const [grounded, cseResults] = await Promise.all([
+    runGroundedSearch(description, request.searchQueries, budget).catch((error) => {
+      console.warn('[suma] búsqueda anclada no disponible:', error);
+      return null;
+    }),
+    searchProductPages(
+      request.searchQueries.length > 0
+        ? request.searchQueries
+        : [`${request.material} precio comprar`],
+    ),
+  ]);
 
-  try {
-    const grounded = await runGroundedSearch(description, request.searchQueries, budget);
-    findings = grounded.text;
-    sources = grounded.sources;
-  } catch (error) {
-    console.warn('[suma] búsqueda anclada no disponible, se usa el conocimiento del modelo:', error);
+  let findings = grounded?.text ?? '';
+  const sources: GroundingSource[] = grounded?.sources ?? [];
+
+  const cseEvidence = formatCseEvidence(cseResults);
+  if (cseEvidence) {
+    findings = findings ? `${findings}\n\n${cseEvidence}` : cseEvidence;
+  }
+
+  // Las fichas de la API se suman a las fuentes visibles, sin duplicados.
+  const seenSources = new Set(sources.map((source) => source.url));
+  for (const result of cseResults.slice(0, 6)) {
+    if (seenSources.has(result.url)) continue;
+    seenSources.add(result.url);
+    sources.push({ title: `${result.title} · ${result.domain}`, url: result.url });
   }
 
   const structured = findings
