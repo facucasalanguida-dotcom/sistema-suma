@@ -48,8 +48,8 @@ interface ComposerProps {
 export function Composer({ onSend, busy, awaitingQuantity, suggestions = [] }: ComposerProps) {
   // En pantallas estrechas el ejemplo largo se cortaba dentro del campo.
   const placeholder = useNarrowViewport()
-    ? 'Describe el material que necesitas…'
-    : 'Describe el material: «porcelánico 60x60 antideslizante para 40 m² de terraza»';
+    ? 'Describe el material o pega el enlace de un producto…'
+    : 'Describe el material («porcelánico 60x60 para 40 m²») o pega el enlace de un producto de cualquier tienda';
 
   const [text, setText] = useState('');
   const [image, setImage] = useState<PreparedImage | null>(null);

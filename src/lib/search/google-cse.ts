@@ -151,34 +151,52 @@ async function runQuery(
 }
 
 /**
- * Busca la ficha de UN producto dentro de la web de UN proveedor concreto.
- *
- * Es el rescate de las ofertas que llegan sin enlace: en lugar de enseñar la
- * portada de la tienda, se le pregunta al índice de Google si esa tienda
- * tiene una página para ese producto. Devuelve la primera ficha real (https,
- * no portada, del dominio pedido) o `null` si no existe.
+ * Busca fichas de producto dentro de la web de UN proveedor concreto: el
+ * equivalente a entrar en esa tienda y teclear el material en su buscador,
+ * pero a través del índice de Google. Devuelve hasta `limit` fichas reales
+ * (https, no portadas, del dominio pedido), sin duplicados.
+ */
+export async function searchShopProducts(
+  query: string,
+  domain: string,
+  limit = 3,
+): Promise<CseResult[]> {
+  if (!isCseConfigured() || !query.trim() || !domain.includes('.')) return [];
+
+  const items = await runQuery(query, { siteSearch: domain, siteSearchFilter: 'i', num: '10' });
+  const allowed = new Set([domain.toLowerCase()]);
+
+  const seen = new Set<string>();
+  const results: CseResult[] = [];
+
+  for (const item of items) {
+    const parsed = parseShopUrl(item.link, allowed);
+    if (!parsed) continue;
+    if (seen.has(parsed.canonical)) continue;
+    seen.add(parsed.canonical);
+    results.push({
+      title: item.title.trim(),
+      url: item.link,
+      snippet: item.snippet.replace(/\s+/g, ' ').trim(),
+      domain: parsed.domain,
+    });
+    if (results.length >= limit) break;
+  }
+
+  return results;
+}
+
+/**
+ * La primera ficha de un producto en la web de un proveedor, o `null`. Es el
+ * rescate de las ofertas que llegan sin enlace: en lugar de enseñar la
+ * portada de la tienda, se le pregunta a su buscador por el producto.
  */
 export async function findProductPageOnSite(
   query: string,
   domain: string,
 ): Promise<CseResult | null> {
-  if (!isCseConfigured() || !query.trim() || !domain.includes('.')) return null;
-
-  const items = await runQuery(query, { siteSearch: domain, siteSearchFilter: 'i', num: '5' });
-  const allowed = new Set([domain.toLowerCase()]);
-
-  for (const item of items) {
-    const parsed = parseShopUrl(item.link, allowed);
-    if (!parsed) continue;
-    return {
-      title: item.title.trim(),
-      url: item.link,
-      snippet: item.snippet.replace(/\s+/g, ' ').trim(),
-      domain: parsed.domain,
-    };
-  }
-
-  return null;
+  const results = await searchShopProducts(query, domain, 1);
+  return results[0] ?? null;
 }
 
 class RetryableError extends Error {}

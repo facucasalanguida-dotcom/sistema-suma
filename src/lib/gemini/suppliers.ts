@@ -21,6 +21,7 @@ import {
   searchProductPages,
 } from '../search/google-cse';
 import { productSearchTerms, siteDomain } from '../search/fallback-link';
+import { formatLiveEvidence, scrapeShops, type LivePage } from '../search/live-shops';
 import {
   VERIFY_DEFAULT_REMAINING_MS,
   canonicalUrl,
@@ -78,14 +79,17 @@ export async function searchSuppliers(
 ): Promise<SupplierSearchResult> {
   const description = describeMaterial(request);
 
-  // Dos fuentes en paralelo, para que la segunda no añada latencia:
+  // Tres fuentes en paralelo, para que ninguna añada latencia a las demás:
+  //  - la lectura EN VIVO de las tiendas (buscar el material en cada una y
+  //    descargar sus fichas ahora mismo): la fuente principal,
   //  - el grounding de Gemini sobre Google Search (razonamiento + fuentes), y
-  //  - la búsqueda programática con la API oficial de Google Custom Search,
-  //    que aporta más fichas de producto con URL literal. Cada una puede
-  //    fallar sin arrastrar a la otra.
+  //  - la búsqueda programática general, que aporta fichas de tiendas que no
+  //    están en la lista de lectura en vivo.
+  // Cada una puede fallar sin arrastrar a las otras.
   const cap = groundedSearchCap(budget?.remaining() ?? GROUNDED_CAP_MS + STRUCTURE_RESERVE_MS);
+  const scrapeQuery = request.searchQueries[0] ?? `${request.material}`;
 
-  const [grounded, cseResults] = await Promise.all([
+  const [grounded, cseResults, livePages] = await Promise.all([
     cap === null
       ? Promise.resolve(null)
       : runGroundedSearch(description, request.searchQueries, budget, cap).catch((error) => {
@@ -97,18 +101,30 @@ export async function searchSuppliers(
         ? request.searchQueries
         : [`${request.material} precio comprar`],
     ),
+    withCap(scrapeShops(scrapeQuery), SCRAPE_CAP_MS, [] as LivePage[]).catch(() => []),
   ]);
 
   let findings = grounded?.text ?? '';
   const sources: GroundingSource[] = grounded?.sources ?? [];
+
+  // La evidencia en vivo va la primera: es la fuente que manda.
+  const liveEvidence = formatLiveEvidence(livePages);
+  if (liveEvidence) {
+    findings = findings ? `${liveEvidence}\n\n${findings}` : liveEvidence;
+  }
 
   const cseEvidence = formatCseEvidence(cseResults);
   if (cseEvidence) {
     findings = findings ? `${findings}\n\n${cseEvidence}` : cseEvidence;
   }
 
-  // Las fichas de la API se suman a las fuentes visibles, sin duplicados.
+  // Las fichas leídas y las de la API se suman a las fuentes visibles.
   const seenSources = new Set(sources.map((source) => source.url));
+  for (const page of livePages) {
+    if (seenSources.has(page.url)) continue;
+    seenSources.add(page.url);
+    sources.push({ title: `Ficha leída en vivo · ${page.domain}`, url: page.url });
+  }
   for (const result of cseResults.slice(0, 6)) {
     if (seenSources.has(result.url)) continue;
     seenSources.add(result.url);
@@ -123,7 +139,11 @@ export async function searchSuppliers(
   let offers = structured.offers.filter((offer) => offer.price > 0);
   let demoMode = false;
 
-  if (offers.length === 0) {
+  // El catálogo local sólo entra en juego cuando la lectura en vivo de las
+  // tiendas no está disponible (falta la clave de Custom Search): con la
+  // lectura en vivo activa, el usuario quiere datos leídos hoy de las
+  // tiendas, no referencias guardadas.
+  if (offers.length === 0 && livePages.length === 0 && !isCseConfigured()) {
     const fallback = searchDemoCatalog(`${request.material} ${request.category}`);
     if (fallback.length > 0) {
       summary =
@@ -135,7 +155,15 @@ export async function searchSuppliers(
     }
   }
 
-  const indexed = new Set<string>();
+  // Las fichas leídas en vivo ya están comprobadas por definición: acaban de
+  // responder con su contenido. Cuentan como verificadas y no se re-visitan.
+  const liveCanonicals = new Set<string>();
+  for (const page of livePages) {
+    const canonical = canonicalUrl(page.url);
+    if (canonical) liveCanonicals.add(canonical);
+  }
+
+  const indexed = new Set<string>(liveCanonicals);
   for (const result of cseResults) {
     const canonical = canonicalUrl(result.url);
     if (canonical) indexed.add(canonical);
@@ -162,13 +190,29 @@ export async function searchSuppliers(
   if (offers.some((offer) => offer.sourceUrl !== null)) {
     const cap = verificationCap(budget?.remaining() ?? VERIFY_DEFAULT_REMAINING_MS);
     const statuses = await checkLinks(
-      offers.map((offer) => offer.sourceUrl),
+      offers.map((offer) => {
+        if (!offer.sourceUrl) return null;
+        const canonical = canonicalUrl(offer.sourceUrl);
+        // Las fichas leídas en vivo no se re-visitan.
+        return canonical && liveCanonicals.has(canonical) ? null : offer.sourceUrl;
+      }),
       cap,
     );
     offers = applyLinkVerification(offers, statuses, indexed);
   }
 
   return { summary, offers, sources, demoMode };
+}
+
+/** Tope de la lectura en vivo; corre en paralelo al grounding y nunca lo frena. */
+const SCRAPE_CAP_MS = 15_000;
+
+/** Devuelve el resultado de la promesa, o `fallback` si tarda más de `capMs`. */
+function withCap<T>(promise: Promise<T>, capMs: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), capMs)),
+  ]);
 }
 
 /** Reparto de tiempo del rescate: sólo se intenta con hueco de sobra. */

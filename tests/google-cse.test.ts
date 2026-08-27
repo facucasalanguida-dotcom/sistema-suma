@@ -5,6 +5,7 @@ import {
   formatCseEvidence,
   isCseConfigured,
   searchProductPages,
+  searchShopProducts,
 } from '@/lib/search/google-cse';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -180,6 +181,30 @@ describe('rescate de la ficha dentro de la web del proveedor', () => {
     vi.stubEnv('GOOGLE_CSE_API_KEY', '');
     expect(await findProductPageOnSite('cemento', 'obramat.es')).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('búsqueda dentro de una tienda concreta', () => {
+  it('devuelve varias fichas del dominio, deduplicadas y con tope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        jsonResponse({
+          items: [
+            item('https://www.obramat.es/ventilador-1'),
+            item('https://www.obramat.es/ventilador-1?utm=x'),
+            item('https://www.obramat.es/ventilador-2'),
+            item('https://www.obramat.es/ventilador-3'),
+          ],
+        }),
+      ),
+    );
+
+    const results = await searchShopProducts('ventilador', 'obramat.es', 2);
+    expect(results.map((result) => result.url)).toEqual([
+      'https://www.obramat.es/ventilador-1',
+      'https://www.obramat.es/ventilador-2',
+    ]);
   });
 });
 

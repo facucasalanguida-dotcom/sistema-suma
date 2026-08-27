@@ -36,3 +36,22 @@ export function productSearchUrl(
   const query = domain ? `${terms} site:${domain}` : `${terms} ${offer.supplier.name} comprar`;
   return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
 }
+
+/**
+ * Tiendas que se ofrecen como «explora tú mismo» bajo los resultados: el
+ * usuario abre la tienda con todas sus opciones, elige el producto que le
+ * convence y pega su enlace en el chat para incorporarlo al presupuesto.
+ */
+export const EXPLORE_SHOPS: Array<{ name: string; domain: string }> = [
+  { name: 'Obramat', domain: 'obramat.es' },
+  { name: 'Leroy Merlin', domain: 'leroymerlin.es' },
+  { name: 'ManoMano', domain: 'manomano.es' },
+  { name: 'Bauhaus', domain: 'bauhaus.es' },
+  { name: 'Brico Depot', domain: 'bricodepot.es' },
+];
+
+/** Búsqueda del material dentro de una tienda concreta. */
+export function shopSearchUrl(material: string, domain: string): string {
+  const query = `${material} site:${domain}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+}

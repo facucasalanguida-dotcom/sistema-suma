@@ -77,8 +77,10 @@ ${findings}
 
 INSTRUCCIONES
 - Conserva únicamente información presente en el informe. No añadas proveedores ni productos que no aparezcan.
+- Si el informe incluye una sección de FICHAS DESCARGADAS EN VIVO, ésa es la fuente que manda: cada bloque es el contenido real de una ficha de producto leída ahora mismo de la web de la tienda. Convierte en oferta CADA ficha en vivo que corresponda al material solicitado (usa su URL literal como \`sourceUrl\`, su precio publicado —marca \`priceIncludesVat\` si es PVP con IVA— y \`confidence\` = "alta"). Ignora las fichas en vivo que sean de otro producto distinto al pedido.
 - \`sourceUrl\` es la URL de la ficha del producto que cita el informe, copiada literalmente. Si el informe no da la ficha exacta de una opción, deja \`sourceUrl\` vacío: jamás inventes ni "completes" una URL.
-- Si el informe incluye una sección de RESULTADOS DE LA BÚSQUEDA PROGRAMÁTICA, esas URLs vienen literales de la API de Google y son las más fiables de todo el informe: cuando una opción se corresponda con una de esas fichas, usa exactamente esa URL como \`sourceUrl\`, y da preferencia a construir opciones a partir de esas fichas frente a menciones sin enlace.
+- Si el informe incluye una sección de RESULTADOS DE LA BÚSQUEDA PROGRAMÁTICA, esas URLs también vienen literales de la API de Google: cuando una opción se corresponda con una de esas fichas, usa exactamente esa URL como \`sourceUrl\`.
+- El resto del informe complementa a las fichas en vivo: sirve para añadir opciones de proveedores que no tienen ficha leída (almacenes locales, material a granel), no para duplicar las que ya la tienen.
 - Descarta las opciones que el informe señale como descatalogadas, agotadas o no disponibles actualmente.
 - \`price\` es el precio de UNA unidad de venta. \`saleUnit\` debe ser una de: ${SALE_UNITS.join(', ')}.
 - \`coverageValue\` y \`coverageUnit\` expresan cuánta magnitud medible rinde UNA unidad de venta:
@@ -104,6 +106,25 @@ DISTRIBUIDORES CON PRESENCIA CONTRASTADA EN ${searchScope.province.toUpperCase()
 ${directoryForPrompt()}
 
 Usa exclusivamente distribuidores reales de la lista anterior o cadenas nacionales que sirvan en ${searchScope.province}. Cubre toda la horquilla de precio. Marca TODAS las ofertas con \`confidence\` = "estimada" y deja \`sourceUrl\` vacío, porque no has consultado ninguna fuente y una URL de memoria suele estar rota o inventada. En \`summary\` advierte al usuario de que son precios de mercado orientativos que conviene confirmar con el proveedor.`;
+}
+
+/** Importación: el usuario pega el enlace de una ficha y se lee esa página. */
+export function buildImportPrompt(url: string, evidence: string): string {
+  return `El usuario ha pegado el enlace de una ficha de producto y el sistema ha descargado esa página. Convierte su contenido en UNA oferta estructurada para el presupuesto.
+
+URL DE LA FICHA
+${url}
+
+CONTENIDO DE LA PÁGINA
+${evidence}
+
+INSTRUCCIONES
+- La página describe UN producto: devuelve exactamente una oferta en \`offers\` con sus datos reales (nombre comercial, marca, precio con su unidad de venta, y el rendimiento por unidad de venta).
+- Usa sólo lo que dice la página. El precio debe ser el que aparece publicado; indica en \`priceIncludesVat\` si es PVP con IVA (en tiendas al público casi siempre lo es).
+- \`confidence\` = "alta": la ficha se ha leído directamente.
+- Deja \`sourceUrl\` vacío: el sistema ya conoce la URL y la pondrá él.
+- Si la página NO es la ficha de un producto concreto (es un listado, una categoría, una portada o no aparece ningún precio), devuelve \`offers\` vacío y explica en \`summary\` qué es lo que se ve, para poder pedirle al usuario el enlace correcto.
+- En \`summary\`, resume en una o dos frases qué producto es y su precio, como se lo contarías al cliente.`;
 }
 
 /** Pasos 5-6: interpretación de la cantidad indicada por el usuario. */

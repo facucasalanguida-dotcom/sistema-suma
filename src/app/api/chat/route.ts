@@ -6,8 +6,10 @@ import {
   interpretMaterial,
   interpretMaterialOffline,
 } from '@/lib/gemini/materials';
+import { importProductFromUrl } from '@/lib/gemini/import-offer';
 import { searchSuppliers } from '@/lib/gemini/suppliers';
 import { searchDemoCatalog } from '@/lib/demo/catalog';
+import { extractProductUrl } from '@/lib/import/product-page';
 import { chatRequestSchema, type ChatResponsePayload } from '@/lib/types';
 
 export const runtime = 'nodejs';
@@ -55,6 +57,13 @@ export async function POST(request: Request) {
         { status: 413 },
       );
     }
+  }
+
+  // Un enlace pegado es una orden distinta: no hay que buscar nada, hay que
+  // leer ESA ficha (de cualquier tienda) y dejarla lista para el presupuesto.
+  const productUrl = payload.image ? null : extractProductUrl(payload.text);
+  if (productUrl) {
+    return handleImport(productUrl);
   }
 
   if (!isGeminiConfigured()) {
@@ -113,6 +122,55 @@ export async function POST(request: Request) {
       return NextResponse.json(response);
     }
 
+    return NextResponse.json({ error: describeGeminiError(error) }, { status: 502 });
+  } finally {
+    budget.release();
+  }
+}
+
+/** Lee la ficha pegada por el usuario y responde con la oferta lista. */
+async function handleImport(productUrl: string) {
+  if (!isGeminiConfigured()) {
+    const response: ChatResponsePayload = {
+      reply:
+        'Para leer la ficha de un producto necesito la clave de Gemini configurada ' +
+        '(GEMINI_API_KEY). En modo demostración sólo puedo consultar el catálogo local.',
+      request: null,
+      offers: [],
+      sources: [],
+      needsClarification: false,
+      demoMode: true,
+    };
+    return NextResponse.json(response);
+  }
+
+  const budget = createBudget();
+  try {
+    const result = await importProductFromUrl(productUrl, budget);
+
+    if (!result.ok) {
+      const response: ChatResponsePayload = {
+        reply: result.reply,
+        request: null,
+        offers: [],
+        sources: [],
+        needsClarification: true,
+        demoMode: false,
+      };
+      return NextResponse.json(response);
+    }
+
+    const response: ChatResponsePayload = {
+      reply: result.reply,
+      request: result.request,
+      offers: [result.offer],
+      sources: [{ title: result.offer.productName, url: productUrl }],
+      needsClarification: false,
+      demoMode: false,
+    };
+    return NextResponse.json(response);
+  } catch (error) {
+    console.error('[suma] error importando ficha:', error);
     return NextResponse.json({ error: describeGeminiError(error) }, { status: 502 });
   } finally {
     budget.release();
