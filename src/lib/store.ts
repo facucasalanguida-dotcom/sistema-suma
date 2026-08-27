@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_VAT_PCT } from './pricing';
+import { DEFAULT_VAT_PCT, MAX_MARGIN_PCT } from './pricing';
 import type {
   BudgetLine,
   ChatMessage,
@@ -12,6 +12,9 @@ import type {
   QuantityResponsePayload,
   SupplierOffer,
 } from './types';
+
+/** Margen de ganancia con el que arranca un presupuesto nuevo, en %. */
+export const DEFAULT_MARGIN_PCT = 20;
 
 /** Fase del asistente, para que la interfaz cuente qué está pasando. */
 export type AssistantStatus =
@@ -30,6 +33,8 @@ interface BudgetState {
   pendingOffer: SupplierOffer | null;
   pendingMessageId: string | null;
   client: ClientDetails;
+  /** Margen de ganancia sobre el coste de la obra, en %. */
+  marginPct: number;
   discountPct: number;
   vatPct: number;
   notes: string;
@@ -47,6 +52,7 @@ interface BudgetState {
   clearBudget: () => void;
   resetConversation: () => void;
   setClient: (client: Partial<ClientDetails>) => void;
+  setMarginPct: (value: number) => void;
   setDiscountPct: (value: number) => void;
   setVatPct: (value: number) => void;
   setNotes: (value: string) => void;
@@ -106,6 +112,7 @@ export const useBudgetStore = create<BudgetState>()(
       pendingOffer: null,
       pendingMessageId: null,
       client: EMPTY_CLIENT,
+      marginPct: DEFAULT_MARGIN_PCT,
       discountPct: 0,
       vatPct: DEFAULT_VAT_PCT,
       notes: '',
@@ -345,6 +352,10 @@ export const useBudgetStore = create<BudgetState>()(
         set((state) => ({ client: { ...state.client, ...client } }));
       },
 
+      setMarginPct(value) {
+        set({ marginPct: Math.min(Math.max(value, 0), MAX_MARGIN_PCT) });
+      },
+
       setDiscountPct(value) {
         set({ discountPct: Math.min(Math.max(value, 0), 100) });
       },
@@ -376,6 +387,7 @@ export const useBudgetStore = create<BudgetState>()(
               lines: state.lines,
               laborLines: state.laborLines,
               client: state.client,
+              marginPct: state.marginPct,
               discountPct: state.discountPct,
               vatPct: state.vatPct,
               notes: state.notes,
@@ -453,6 +465,7 @@ export const useBudgetStore = create<BudgetState>()(
         lines: state.lines,
         laborLines: state.laborLines,
         client: state.client,
+        marginPct: state.marginPct,
         discountPct: state.discountPct,
         vatPct: state.vatPct,
         notes: state.notes,

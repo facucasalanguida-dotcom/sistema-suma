@@ -42,7 +42,20 @@ export function projectLaborTotal(project: Project): number {
   );
 }
 
-/** Total presupuestado al cliente (con IVA): lo que el cliente debe en origen. */
+/** Coste de la obra presupuestado: materiales + mano de obra, sin margen. */
+export function projectCostTotal(project: Project): number {
+  return sumMoney(project.budgets.map((budget) => budget.totals.costSubtotal));
+}
+
+/** Ganancia prevista: el margen aplicado en los presupuestos de la obra. */
+export function projectMarginTotal(project: Project): number {
+  return sumMoney(project.budgets.map((budget) => budget.totals.marginAmount));
+}
+
+/**
+ * Lo que hay que cobrarle al cliente («debo cobrar»): el total presupuestado,
+ * con el margen de ganancia y el IVA ya incluidos.
+ */
 export function projectBilledTotal(project: Project): number {
   return sumMoney(project.budgets.map((budget) => budget.totals.total));
 }

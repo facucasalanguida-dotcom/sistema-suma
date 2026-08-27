@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { normalizeLaborResponse, parseLaborOffline } from '@/lib/labor';
-import { computeTotals, laborTotalOf } from '@/lib/pricing';
+import { MAX_MARGIN_PCT, computeTotals, laborTotalOf } from '@/lib/pricing';
 import type { BudgetLine, LaborLine } from '@/lib/types';
 import { supplierOfferSchema } from '@/lib/types';
 
@@ -116,5 +116,52 @@ describe('computeTotals con mano de obra', () => {
     expect(totals.subtotal).toBe(2650);
     expect(totals.discountAmount).toBe(265);
     expect(totals.taxableBase).toBe(2385);
+  });
+});
+
+describe('margen de ganancia', () => {
+  const laborLines: LaborLine[] = [
+    { id: 'l1', description: 'Albañilería', detail: null, amount: 500 },
+  ];
+
+  it('se aplica sobre el coste de la obra, no sobre el precio de venta', () => {
+    const totals = computeTotals([materialLine(1000)], { laborLines, marginPct: 20 });
+
+    expect(totals.costSubtotal).toBe(1500);
+    expect(totals.marginPct).toBe(20);
+    expect(totals.marginAmount).toBe(300);
+    expect(totals.subtotal).toBe(1800);
+    // (1.500 + 300) × 1,21
+    expect(totals.total).toBeCloseTo(2178, 2);
+  });
+
+  it('sin margen, lo que se cobra es el coste', () => {
+    const totals = computeTotals([materialLine(1000)], { laborLines });
+    expect(totals.marginAmount).toBe(0);
+    expect(totals.subtotal).toBe(totals.costSubtotal);
+  });
+
+  it('el descuento comercial se aplica después del margen', () => {
+    const totals = computeTotals([materialLine(1000)], {
+      laborLines,
+      marginPct: 20,
+      discountPct: 10,
+    });
+    expect(totals.subtotal).toBe(1800);
+    expect(totals.discountAmount).toBe(180);
+    expect(totals.taxableBase).toBe(1620);
+  });
+
+  it('un margen absurdo o negativo se acota', () => {
+    expect(computeTotals([materialLine(100)], { marginPct: -5 }).marginPct).toBe(0);
+    expect(computeTotals([materialLine(100)], { marginPct: 1000 }).marginPct).toBe(MAX_MARGIN_PCT);
+    expect(computeTotals([materialLine(100)], { marginPct: Number.NaN }).marginPct).toBe(0);
+  });
+
+  it('los céntimos del margen se redondean con exactitud', () => {
+    // 15 % de 16,99 € = 2,5485 -> 2,55 €
+    const totals = computeTotals([materialLine(16.99)], { marginPct: 15 });
+    expect(totals.marginAmount).toBe(2.55);
+    expect(totals.subtotal).toBe(19.54);
   });
 });

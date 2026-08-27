@@ -130,7 +130,14 @@ export function BudgetPanel({
               <Row label="Mano de obra" value={formatCurrency(totals.laborTotal)} />
             </>
           ) : null}
-          <Row label="Suma de partidas" value={formatCurrency(totals.subtotal)} />
+          <Row label="Coste de la obra" value={formatCurrency(totals.costSubtotal)} />
+          {totals.marginAmount > 0 ? (
+            <Row
+              label={`Margen (${formatPrecise(totals.marginPct)} %)`}
+              value={`+${formatCurrency(totals.marginAmount)}`}
+              tone="success"
+            />
+          ) : null}
           {totals.discountPct > 0 ? (
             <Row
               label={`Descuento (${formatPrecise(totals.discountPct)} %)`}
@@ -145,7 +152,9 @@ export function BudgetPanel({
         </dl>
 
         <div className="mt-3 flex items-baseline justify-between rounded-r-lg border-l-4 border-suma-red bg-suma-high px-3 py-2.5">
-          <span className="text-xs font-bold tracking-wide text-suma-muted uppercase">Total</span>
+          <span className="text-xs font-bold tracking-wide text-suma-muted uppercase">
+            Debo cobrar
+          </span>
           <span className="text-xl font-bold text-suma-ink tabular-nums">
             {formatCurrency(totals.total)}
           </span>
@@ -189,11 +198,26 @@ export function BudgetPanel({
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+  tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  tone?: 'neutral' | 'success';
+}) {
   return (
     <div className="flex items-baseline justify-between gap-2">
       <dt className="text-suma-muted">{label}</dt>
-      <dd className="font-medium text-suma-ink tabular-nums">{value}</dd>
+      <dd
+        className={cn(
+          'font-medium tabular-nums',
+          tone === 'success' ? 'text-suma-success' : 'text-suma-ink',
+        )}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

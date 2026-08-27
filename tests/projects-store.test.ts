@@ -41,6 +41,7 @@ function snapshot(id: string, lines: BudgetLine[]): SavedBudget {
     clientName: 'Cliente',
     lines,
     laborLines: [],
+    marginPct: 0,
     discountPct: 0,
     vatPct: 21,
     notes: '',

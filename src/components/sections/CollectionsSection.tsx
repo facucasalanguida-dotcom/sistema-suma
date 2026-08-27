@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { HandCoins, Plus, Trash2 } from 'lucide-react';
+import { HandCoins, Plus, Receipt, Trash2, Wallet } from 'lucide-react';
 import { Card, EmptyHint, ProgressBar, ProjectPicker, SectionShell } from './SectionShell';
 import { Button } from '@/components/ui/Button';
 import { fieldControlClass } from '@/components/ui/Field';
@@ -35,7 +35,7 @@ export function CollectionsSection() {
     <SectionShell
       icon={<HandCoins className="size-5" aria-hidden />}
       title="Cobros"
-      subtitle="Lo que te deben de cada proyecto y el registro de cada cobro recibido."
+      subtitle="Lo que debes cobrar de cada obra —con tu margen incluido— y lo que ya has cobrado."
     >
       <Card>
         <ProjectPicker projects={projects} value={projectId} onChange={setProjectId} />
@@ -50,34 +50,55 @@ export function CollectionsSection() {
 
       {project ? (
         <>
-          <Card className="border-suma-red/40">
-            <p className="text-[11px] font-semibold tracking-wide text-suma-muted uppercase">
-              Pendiente de cobro · {project.name}
-            </p>
-            <p className="mt-1 text-3xl font-bold text-suma-red-bright tabular-nums">
-              {formatCurrency(owed)}
-            </p>
-            <div className="mt-3">
+          {/*
+            Los dos carteles que pidió el usuario: lo que hay que cobrar
+            (presupuestado con margen e IVA) y lo que ya se ha cobrado.
+          */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Card className="border-suma-red/45 bg-suma-red-tint">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-suma-muted uppercase">
+                <Receipt className="size-3.5" aria-hidden />
+                Debo cobrar
+              </p>
+              <p className="mt-1 text-3xl font-bold text-suma-red-bright tabular-nums">
+                {formatCurrency(billed)}
+              </p>
+              <p className="mt-1 text-[11px] text-suma-muted">
+                Total presupuestado con margen e IVA
+              </p>
+            </Card>
+
+            <Card className="border-suma-success/40 bg-suma-success/10">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-suma-muted uppercase">
+                <Wallet className="size-3.5" aria-hidden />
+                He cobrado
+              </p>
+              <p className="mt-1 text-3xl font-bold text-suma-success tabular-nums">
+                {formatCurrency(collected)}
+              </p>
+              <p className="mt-1 text-[11px] text-suma-muted">
+                {project.collections.length}{' '}
+                {project.collections.length === 1 ? 'cobro registrado' : 'cobros registrados'}
+              </p>
+            </Card>
+          </div>
+
+          <Card>
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[11px] font-bold tracking-wide text-suma-muted uppercase">
+                Queda por cobrar · {project.name}
+              </p>
+              <p className="text-xl font-bold text-suma-ink tabular-nums">
+                {formatCurrency(owed)}
+              </p>
+            </div>
+            <div className="mt-2">
               <ProgressBar ratio={billed > 0 ? collected / billed : 0} />
-              <div className="mt-1.5 flex justify-between text-[11px] text-suma-muted">
-                <span>
-                  Cobrado:{' '}
-                  <span className="font-semibold text-suma-success tabular-nums">
-                    {formatCurrency(collected)}
-                  </span>
-                </span>
-                <span>
-                  Presupuestado:{' '}
-                  <span className="font-semibold text-suma-ink tabular-nums">
-                    {formatCurrency(billed)}
-                  </span>
-                </span>
-              </div>
             </div>
             {billed === 0 ? (
               <p className="mt-2 text-[11px] text-suma-muted">
-                Este proyecto no tiene presupuestos guardados todavía, así que el pendiente es
-                cero. Guarda un presupuesto finalizado para fijar lo que debe el cliente.
+                Este proyecto no tiene presupuestos guardados todavía, así que no hay nada que
+                cobrar. Guarda un presupuesto finalizado para fijar lo que debe el cliente.
               </p>
             ) : null}
           </Card>

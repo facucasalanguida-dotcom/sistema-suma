@@ -62,6 +62,7 @@ function sampleProject(overrides: Partial<Project> = {}): Project {
         clientName: 'Cliente',
         lines,
         laborLines,
+        marginPct: 0,
         discountPct: 0,
         vatPct: 21,
         notes: '',

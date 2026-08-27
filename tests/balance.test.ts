@@ -52,10 +52,11 @@ function requestBody() {
           clientName: 'Promociones Costa del Sol',
           lines,
           laborLines,
+          marginPct: 20,
           discountPct: 0,
           vatPct: 21,
           notes: '',
-          totals: computeTotals(lines, { laborLines, vatPct: 21 }),
+          totals: computeTotals(lines, { laborLines, vatPct: 21, marginPct: 20 }),
         },
       ],
       paidLineIds: ['a'],
@@ -125,11 +126,16 @@ describe('balance en Excel', () => {
 
     expect(values.get('Materiales (sin IVA)')).toBe(1000);
     expect(values.get('Mano de obra (sin IVA)')).toBe(500);
+    expect(values.get('Coste de la obra (sin IVA)')).toBe(1500);
+    // 20 % sobre 1.500 € de coste.
+    expect(values.get('Margen de ganancia')).toBe(300);
+    // (1.500 + 300) × 1,21 = 2.178 €.
+    expect(values.get('Debo cobrar (con margen e IVA)')).toBeCloseTo(2178, 2);
     expect(values.get('Materiales ya pagados')).toBe(600);
     expect(values.get('Materiales pendientes de pagar')).toBe(400);
     expect(values.get('Otros pagos a proveedores')).toBe(100);
     expect(values.get('Salarios imputados al proyecto')).toBe(300);
-    expect(values.get('Cobrado hasta la fecha')).toBe(800);
+    expect(values.get('He cobrado')).toBe(800);
     // 800 cobrado − (600 + 100 + 300) = −200
     expect(values.get('Cobrado − pagado (materiales + proveedores + salarios)')).toBe(-200);
   });

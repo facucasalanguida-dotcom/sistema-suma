@@ -172,7 +172,13 @@ export interface BudgetTotals {
   materialsSubtotal: number;
   /** Importe de la mano de obra, sin IVA. */
   laborTotal: number;
-  /** Materiales + mano de obra. */
+  /** Coste de la obra: materiales + mano de obra, sin margen. */
+  costSubtotal: number;
+  /** Margen de ganancia aplicado sobre el coste, en %. */
+  marginPct: number;
+  /** Ganancia en euros que aporta ese margen. */
+  marginAmount: number;
+  /** Lo que se cobra antes de descuento e IVA: coste + margen. */
   subtotal: number;
   discountPct: number;
   discountAmount: number;
@@ -210,6 +216,7 @@ export interface SavedBudget {
   clientName: string;
   lines: BudgetLine[];
   laborLines: LaborLine[];
+  marginPct: number;
   discountPct: number;
   vatPct: number;
   notes: string;

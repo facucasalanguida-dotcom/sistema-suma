@@ -457,8 +457,22 @@ export function BudgetDocument({ data }: BudgetDocumentProps) {
 
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Suma de partidas</Text>
-              <Text style={styles.totalValue}>{formatCurrency(totals.subtotal)}</Text>
+              <Text style={styles.totalValue}>{formatCurrency(totals.costSubtotal)}</Text>
             </View>
+
+            {/*
+              El margen se presenta con el nombre que usa el sector en un
+              presupuesto de obra: gastos generales y beneficio industrial.
+            */}
+            {totals.marginAmount > 0 ? (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>
+                  Gastos generales y beneficio industrial (
+                  {formatPrecise(totals.marginPct)} %)
+                </Text>
+                <Text style={styles.totalValue}>{formatCurrency(totals.marginAmount)}</Text>
+              </View>
+            ) : null}
 
             {totals.discountPct > 0 ? (
               <View style={styles.totalRow}>

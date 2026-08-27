@@ -266,7 +266,13 @@ export function FinalizeDialog({
                   <SummaryRow label="Mano de obra" value={formatCurrency(totals.laborTotal)} />
                 </>
               ) : null}
-              <SummaryRow label="Suma de partidas" value={formatCurrency(totals.subtotal)} />
+              <SummaryRow label="Coste de la obra" value={formatCurrency(totals.costSubtotal)} />
+              {totals.marginAmount > 0 ? (
+                <SummaryRow
+                  label={`Margen de ganancia (${formatPrecise(totals.marginPct)} %)`}
+                  value={`+${formatCurrency(totals.marginAmount)}`}
+                />
+              ) : null}
               {totals.discountPct > 0 ? (
                 <SummaryRow
                   label={`Descuento (${formatPrecise(totals.discountPct)} %)`}

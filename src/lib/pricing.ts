@@ -211,19 +211,38 @@ export function laborTotalOf(laborLines: Array<Pick<LaborLine, 'amount'>>): numb
   return sumMoney(laborLines.map((line) => line.amount));
 }
 
+/** Margen de ganancia máximo admitido, en %. */
+export const MAX_MARGIN_PCT = 300;
+
 /**
- * Totaliza el presupuesto: materiales + mano de obra, descuento, IVA y total.
+ * Totaliza el presupuesto.
+ *
+ * El orden importa y es el del sector: primero el COSTE de la obra
+ * (materiales + mano de obra), sobre él se aplica el MARGEN de ganancia, y
+ * el resultado es lo que se cobra al cliente; después van el descuento
+ * comercial y el IVA. Así el margen se calcula sobre lo que de verdad cuesta
+ * ejecutar la obra, no sobre una base ya rebajada.
  */
 export function computeTotals(
   lines: BudgetLine[],
-  options: { discountPct?: number; vatPct?: number; laborLines?: LaborLine[] } = {},
+  options: {
+    discountPct?: number;
+    vatPct?: number;
+    laborLines?: LaborLine[];
+    marginPct?: number;
+  } = {},
 ): BudgetTotals {
   const discountPct = clampPct(options.discountPct ?? 0);
   const vatPct = clampPct(options.vatPct ?? DEFAULT_VAT_PCT);
+  const marginPct = clampMargin(options.marginPct ?? 0);
 
   const materialsSubtotal = sumMoney(lines.map((line) => line.breakdown.lineTotal));
   const laborTotal = laborTotalOf(options.laborLines ?? []);
-  const subtotal = sumMoney([materialsSubtotal, laborTotal]);
+  const costSubtotal = sumMoney([materialsSubtotal, laborTotal]);
+
+  const marginAmount = percentOf(costSubtotal, marginPct);
+  const subtotal = sumMoney([costSubtotal, marginAmount]);
+
   const discountAmount = percentOf(subtotal, discountPct);
   const taxableBase = round2(subtotal - discountAmount);
   const vatAmount = percentOf(taxableBase, vatPct);
@@ -232,6 +251,9 @@ export function computeTotals(
   return {
     materialsSubtotal,
     laborTotal,
+    costSubtotal,
+    marginPct,
+    marginAmount,
     subtotal,
     discountPct,
     discountAmount,
@@ -240,6 +262,11 @@ export function computeTotals(
     vatAmount,
     total,
   };
+}
+
+function clampMargin(value: number): number {
+  if (!Number.isFinite(value) || value < 0) return 0;
+  return Math.min(value, MAX_MARGIN_PCT);
 }
 
 function clampPct(value: number): number {

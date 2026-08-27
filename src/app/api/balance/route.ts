@@ -7,7 +7,9 @@ import {
   projectCashBalance,
   projectCollectedTotal,
   projectExtraPaymentsTotal,
+  projectCostTotal,
   projectLaborTotal,
+  projectMarginTotal,
   projectMaterialsTotal,
   projectOwedTotal,
   projectPaidMaterialsTotal,
@@ -29,6 +31,9 @@ export const maxDuration = 30;
 const totalsSchema = z.object({
   materialsSubtotal: z.number().default(0),
   laborTotal: z.number().default(0),
+  costSubtotal: z.number().default(0),
+  marginPct: z.number().default(0),
+  marginAmount: z.number().default(0),
   subtotal: z.number(),
   discountPct: z.number(),
   discountAmount: z.number(),
@@ -68,6 +73,7 @@ const budgetSchema = z.object({
       }),
     )
     .default([]),
+  marginPct: z.number().default(0),
   discountPct: z.number().default(0),
   vatPct: z.number().default(21),
   notes: z.string().default(''),
@@ -207,7 +213,9 @@ function buildSummarySheet(
   addSectionRow(sheet, 'PRESUPUESTADO', 2);
   addMoneyRow(sheet, 'Materiales (sin IVA)', projectMaterialsTotal(project));
   addMoneyRow(sheet, 'Mano de obra (sin IVA)', projectLaborTotal(project));
-  addMoneyRow(sheet, 'Total presupuestado al cliente (con IVA)', projectBilledTotal(project), true);
+  addMoneyRow(sheet, 'Coste de la obra (sin IVA)', projectCostTotal(project));
+  addMoneyRow(sheet, 'Margen de ganancia', projectMarginTotal(project));
+  addMoneyRow(sheet, 'Debo cobrar (con margen e IVA)', projectBilledTotal(project), true);
 
   sheet.addRow([]);
   addSectionRow(sheet, 'PAGOS Y GASTOS', 2);
@@ -218,8 +226,8 @@ function buildSummarySheet(
 
   sheet.addRow([]);
   addSectionRow(sheet, 'COBROS', 2);
-  addMoneyRow(sheet, 'Cobrado hasta la fecha', projectCollectedTotal(project));
-  addMoneyRow(sheet, 'Pendiente de cobro', projectOwedTotal(project));
+  addMoneyRow(sheet, 'He cobrado', projectCollectedTotal(project), true);
+  addMoneyRow(sheet, 'Queda por cobrar', projectOwedTotal(project));
 
   sheet.addRow([]);
   addSectionRow(sheet, 'BALANCE DE CAJA', 2);
@@ -233,10 +241,26 @@ function buildSummarySheet(
 
 function buildBudgetsSheet(workbook: ExcelJS.Workbook, project: Project) {
   const sheet = workbook.addWorksheet('Presupuestos');
-  sheet.columns = [{ width: 18 }, { width: 14 }, { width: 24 }, { width: 16 }, { width: 16 }, { width: 16 }];
+  sheet.columns = [
+    { width: 18 },
+    { width: 14 },
+    { width: 24 },
+    { width: 16 },
+    { width: 16 },
+    { width: 14 },
+    { width: 16 },
+  ];
 
-  addBrandHeader(sheet, 'Presupuestos guardados', 6);
-  addTableHeader(sheet, ['Referencia', 'Fecha', 'Cliente', 'Materiales', 'Mano de obra', 'Total (IVA incl.)']);
+  addBrandHeader(sheet, 'Presupuestos guardados', 7);
+  addTableHeader(sheet, [
+    'Referencia',
+    'Fecha',
+    'Cliente',
+    'Materiales',
+    'Mano de obra',
+    'Margen',
+    'Debo cobrar',
+  ]);
 
   for (const budget of project.budgets) {
     const row = sheet.addRow([
@@ -245,9 +269,10 @@ function buildBudgetsSheet(workbook: ExcelJS.Workbook, project: Project) {
       budget.clientName || '—',
       budget.totals.materialsSubtotal,
       budget.totals.laborTotal,
+      budget.totals.marginAmount,
       budget.totals.total,
     ]);
-    [4, 5, 6].forEach((index) => (row.getCell(index).numFmt = EURO_FMT));
+    [4, 5, 6, 7].forEach((index) => (row.getCell(index).numFmt = EURO_FMT));
   }
 }
 
@@ -336,6 +361,8 @@ function buildCollectionsSheet(workbook: ExcelJS.Workbook, project: Project) {
   sheet.columns = [{ width: 14 }, { width: 16 }, { width: 40 }];
 
   addBrandHeader(sheet, 'Cobros del proyecto', 3);
+  addMoneyRow(sheet, 'Debo cobrar', projectBilledTotal(project), true);
+  sheet.addRow([]);
   addTableHeader(sheet, ['Fecha', 'Importe', 'Nota']);
 
   for (const entry of project.collections) {
@@ -344,8 +371,8 @@ function buildCollectionsSheet(workbook: ExcelJS.Workbook, project: Project) {
   }
 
   sheet.addRow([]);
-  addMoneyRow(sheet, 'Total cobrado', projectCollectedTotal(project), true);
-  addMoneyRow(sheet, 'Pendiente de cobro', projectOwedTotal(project), true);
+  addMoneyRow(sheet, 'He cobrado', projectCollectedTotal(project), true);
+  addMoneyRow(sheet, 'Queda por cobrar', projectOwedTotal(project), true);
 }
 
 /* ── Piezas comunes ────────────────────────────────────────────────────── */

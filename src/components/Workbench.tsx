@@ -15,6 +15,7 @@ import {
 import { BudgetPanel } from '@/components/budget/BudgetPanel';
 import { FinalizeDialog } from '@/components/budget/FinalizeDialog';
 import { LaborDialog } from '@/components/budget/LaborDialog';
+import { MarginDialog } from '@/components/budget/MarginDialog';
 import { SaveToProjectDialog } from '@/components/budget/SaveToProjectDialog';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { Composer } from '@/components/chat/Composer';
@@ -59,6 +60,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
   const status = useBudgetStore((state) => state.status);
   const pendingOffer = useBudgetStore((state) => state.pendingOffer);
   const client = useBudgetStore((state) => state.client);
+  const marginPct = useBudgetStore((state) => state.marginPct);
   const discountPct = useBudgetStore((state) => state.discountPct);
   const vatPct = useBudgetStore((state) => state.vatPct);
   const notes = useBudgetStore((state) => state.notes);
@@ -73,6 +75,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
   const clearBudget = useBudgetStore((state) => state.clearBudget);
   const resetConversation = useBudgetStore((state) => state.resetConversation);
   const setClient = useBudgetStore((state) => state.setClient);
+  const setMarginPct = useBudgetStore((state) => state.setMarginPct);
   const setDiscountPct = useBudgetStore((state) => state.setDiscountPct);
   const setVatPct = useBudgetStore((state) => state.setVatPct);
   const setNotes = useBudgetStore((state) => state.setNotes);
@@ -83,6 +86,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
   const [section, setSection] = useState<SectionId>('presupuesto');
   const [finalizeOpen, setFinalizeOpen] = useState(false);
   const [laborOpen, setLaborOpen] = useState(false);
+  const [marginOpen, setMarginOpen] = useState(false);
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
   const [savedReference, setSavedReference] = useState<string | null>(null);
 
@@ -93,8 +97,8 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
   const visibleLabor = useMemo(() => (hydrated ? laborLines : []), [hydrated, laborLines]);
 
   const totals = useMemo(
-    () => computeTotals(visibleLines, { discountPct, vatPct, laborLines: visibleLabor }),
-    [visibleLines, discountPct, vatPct, visibleLabor],
+    () => computeTotals(visibleLines, { discountPct, vatPct, laborLines: visibleLabor, marginPct }),
+    [visibleLines, discountPct, vatPct, visibleLabor, marginPct],
   );
 
   const budgetOfferIds = useMemo(
@@ -130,6 +134,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
       clientName: client.name,
       lines: visibleLines,
       laborLines: visibleLabor,
+      marginPct,
       discountPct,
       vatPct,
       notes,
@@ -256,7 +261,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
               onRemoveLabor={removeLaborLine}
               onClear={clearBudget}
               onLabor={() => setLaborOpen(true)}
-              onFinalize={() => setFinalizeOpen(true)}
+              onFinalize={() => setMarginOpen(true)}
               busy={status === 'generando-pdf'}
             />
           ) : (
@@ -319,7 +324,7 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
               }}
               onFinalize={() => {
                 setBudgetSheetOpen(false);
-                setFinalizeOpen(true);
+                setMarginOpen(true);
               }}
               busy={status === 'generando-pdf'}
             />
@@ -335,9 +340,21 @@ export function Workbench({ aiEnabled }: { aiEnabled: boolean }) {
         onRemove={removeLaborLine}
         onContinue={() => {
           setLaborOpen(false);
-          setFinalizeOpen(true);
+          setMarginOpen(true);
         }}
         aiEnabled={aiEnabled}
+      />
+
+      <MarginDialog
+        open={marginOpen}
+        onClose={() => setMarginOpen(false)}
+        marginPct={marginPct}
+        onMarginChange={setMarginPct}
+        totals={totals}
+        onContinue={() => {
+          setMarginOpen(false);
+          setFinalizeOpen(true);
+        }}
       />
 
       <FinalizeDialog

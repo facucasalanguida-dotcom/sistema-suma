@@ -42,7 +42,7 @@ test.describe('proceso completo de presupuesto', () => {
     // La partida aparece en el panel del presupuesto con su total.
     const budget = page.getByRole('complementary', { name: 'Presupuesto en curso' });
     await expect(budget.getByText('1 partida')).toBeVisible();
-    await expect(budget.getByText('TOTAL')).toBeVisible();
+    await expect(budget.getByText('DEBO COBRAR')).toBeVisible();
 
     // Se añade un segundo material para comprobar que el presupuesto acumula.
     await composer.fill('cemento cola');
@@ -54,10 +54,22 @@ test.describe('proceso completo de presupuesto', () => {
     await page.getByRole('button', { name: /Calcular y añadir/ }).click();
     await expect(budget.getByText('2 partidas')).toBeVisible({ timeout: 30_000 });
 
-    // Paso 7: se finaliza y se descarga el PDF con los datos del cliente.
+    // Paso 7: antes de finalizar se pregunta el margen de ganancia.
     await budget.getByRole('button', { name: /Finalizar presupuesto/ }).click();
+    const marginDialog = page.getByRole('dialog');
+    await expect(
+      marginDialog.getByRole('heading', { name: /Qué margen quieres ganar/ }),
+    ).toBeVisible();
+
+    // Con un 25 % de margen, lo que hay que cobrar sube sobre el coste.
+    await marginDialog.getByRole('button', { name: '25 %' }).click();
+    await expect(marginDialog.getByText(/un 25 % son/)).toBeVisible();
+    await marginDialog.getByRole('button', { name: /^Continuar$/ }).click();
+
+    // Paso 8: datos del cliente y descarga del PDF.
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+    await expect(dialog.getByText(/Margen de ganancia/)).toBeVisible();
 
     await dialog.getByLabel('Razón social o nombre').fill('Promociones Costa del Sol, S.L.');
     await dialog.getByLabel('CIF / NIF').fill('B29123456');
