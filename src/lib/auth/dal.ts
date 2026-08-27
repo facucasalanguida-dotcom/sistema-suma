@@ -32,7 +32,7 @@ export const getSession = cache(async (): Promise<SessionData | null> => {
  */
 export const requireSession = cache(async (): Promise<SessionData> => {
   if (!authIsConfigured()) {
-    if (isDeployed()) redirect('/acceso');
+    if (isDeployed() || !localAllowed()) redirect('/acceso');
     return { sub: 'local', nombre: 'Equipo SUMA', via: 'contrasena' };
   }
 
@@ -49,7 +49,22 @@ export async function sessionForApi(): Promise<SessionData | null> {
   if (!authIsConfigured()) {
     // Mismo criterio: en un despliegue sin cuentas configuradas, ninguna ruta
     // de API sirve datos ni gasta la clave de la IA.
-    return isDeployed() ? null : { sub: 'local', nombre: 'Equipo SUMA', via: 'contrasena' };
+    return isDeployed() || !localAllowed()
+      ? null
+      : { sub: 'local', nombre: 'Equipo SUMA', via: 'contrasena' };
   }
   return readSession();
+}
+
+/**
+ * Segunda condición, deliberadamente independiente de `isDeployed()`.
+ *
+ * La documentación de Next.js insiste en que esta capa es la que de verdad
+ * protege los datos, así que no debe depender de la misma única función que
+ * el proxy: si aquélla se equivoca, ésta todavía cierra. Sólo se admite la
+ * sesión ficticia fuera de una compilación de producción, o cuando se ha
+ * pedido explícitamente trabajar en abierto.
+ */
+function localAllowed(): boolean {
+  return process.env.NODE_ENV !== 'production' || process.env.SUMA_ABIERTO_EN_LOCAL === '1';
 }

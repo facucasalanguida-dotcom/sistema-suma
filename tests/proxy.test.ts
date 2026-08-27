@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { SignJWT } from 'jose';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { proxy } from '@/proxy';
 import { SESSION_COOKIE } from '@/lib/auth/session';
 
@@ -46,7 +46,9 @@ afterEach(() => {
   delete process.env.SESSION_SECRET;
   delete process.env.SUMA_FORZAR_ACCESO;
   delete process.env.SUMA_USUARIOS;
+  delete process.env.SUMA_ABIERTO_EN_LOCAL;
   delete process.env.VERCEL;
+  vi.unstubAllEnvs();
 });
 
 describe('cabeceras de seguridad', () => {
@@ -233,6 +235,33 @@ describe('despliegue sin acceso configurado', () => {
 
   it('sin desplegar (local y pruebas) se sigue trabajando sin credenciales', async () => {
     expect((await proxy(request())).status).toBe(200);
+  });
+
+  /**
+   * El agujero que encontró la auditoría: la detección de «desplegado» miraba
+   * sólo la variable VERCEL, así que desplegar en cualquier otro sitio —o
+   * tener desactivada la exposición de variables de sistema en el propio
+   * Vercel— servía la aplicación abierta de par en par. Ahora manda la
+   * compilación de producción, venga de donde venga.
+   */
+  it('cualquier compilación de producción cuenta como despliegue, no sólo Vercel', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    // Sin VERCEL, como en Docker, un servidor propio, Netlify o Railway.
+    expect((await proxy(request())).status).toBe(503);
+  });
+
+  it('para trabajar en abierto hay que pedirlo explícitamente', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    process.env.SUMA_ABIERTO_EN_LOCAL = '1';
+    expect((await proxy(request())).status).toBe(200);
+  });
+
+  it('el modo abierto no vale como excusa si hay cuentas configuradas', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    process.env.SUMA_ABIERTO_EN_LOCAL = '1';
+    process.env.SESSION_SECRET = SECRET;
+    // Con cuentas puestas, se exige sesión igualmente.
+    expect((await proxy(request())).status).toBe(307);
   });
 });
 

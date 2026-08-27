@@ -110,16 +110,29 @@ export function authIsConfigured(): boolean {
 }
 
 /**
- * `true` cuando la aplicación está DESPLEGADA de verdad (Vercel define estas
- * variables por su cuenta).
+ * `true` cuando la aplicación está DESPLEGADA de verdad.
  *
  * Sirve para lo más importante de todo el módulo: en un despliegue real, una
  * variable de acceso olvidada tiene que CERRAR la aplicación, nunca abrirla.
- * En local y en las pruebas automáticas se sigue trabajando sin credenciales,
- * que es lo cómodo y no tiene ningún riesgo.
+ *
+ * La primera versión de esta función sólo miraba `VERCEL`, y era un error con
+ * consecuencias: bastaba desplegar en cualquier otro sitio —o tener
+ * desactivada la exposición de variables de sistema en el propio Vercel— para
+ * que la aplicación se sirviera abierta de par en par, gastando la clave de
+ * IA de quien pasara por allí. Lo detectó una auditoría y se reprodujo en
+ * vivo. Ahora el criterio es al revés: CUALQUIER compilación de producción
+ * cuenta como despliegue, y para trabajar sin credenciales hay que pedirlo
+ * explícitamente con `SUMA_ABIERTO_EN_LOCAL=1`.
  */
 export function isDeployed(): boolean {
-  return Boolean(process.env.VERCEL || process.env.SUMA_FORZAR_ACCESO);
+  // Salida explícita, para el `npm run build && npm start` de casa y para las
+  // pruebas de extremo a extremo, que arrancan un servidor de producción.
+  if (process.env.SUMA_ABIERTO_EN_LOCAL === '1') return false;
+
+  return (
+    process.env.NODE_ENV === 'production' ||
+    Boolean(process.env.VERCEL || process.env.SUMA_FORZAR_ACCESO)
+  );
 }
 
 /**

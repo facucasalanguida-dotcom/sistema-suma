@@ -43,6 +43,13 @@ export default defineConfig({
     url: 'http://127.0.0.1:3210',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
-    env: { GEMINI_API_KEY: '', GOOGLE_API_KEY: '' },
+    /*
+     * `npm run start` levanta un servidor de PRODUCCIÓN, y en producción el
+     * sistema se cierra si no hay acceso configurado. Estas pruebas recorren
+     * la aplicación sin credenciales a propósito, así que piden explícitamente
+     * el modo abierto. Es la única forma de tenerlo: no hay ningún camino en
+     * el que un despliegue de verdad quede abierto por descuido.
+     */
+    env: { GEMINI_API_KEY: '', GOOGLE_API_KEY: '', SUMA_ABIERTO_EN_LOCAL: '1' },
   },
 });

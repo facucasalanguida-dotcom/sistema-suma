@@ -186,10 +186,18 @@ En **Project → Settings → Environment Variables**, para *Production*,
 
 | Variable | Obligatoria | Para qué |
 | --- | --- | --- |
+| `SESSION_SECRET` | **Sí**, salvo que uses `SUMA_ACCESS_PASSWORD` | Clave (32+ caracteres) que firma las sesiones |
+| `SUMA_USUARIOS` | **Sí**, junto a `SESSION_SECRET` | Las cuentas. La genera `/acceso/alta`; no se escribe a mano |
+| `SUMA_ACCESS_PASSWORD` | **Sí**, si no usas las dos anteriores | Contraseña compartida, y llave de `/acceso/alta` para crear la primera cuenta |
 | `GEMINI_API_KEY` | No, pero sin ella todo va en modo demostración | Lectura de fotografías y búsqueda real de proveedores |
-| `SUMA_ACCESS_PASSWORD` | Recomendable | Contraseña compartida para entrar |
 | `NEXT_PUBLIC_SUMA_*` | Sí, antes de emitir un presupuesto | Datos fiscales del emisor que salen impresos |
+| `AUTH_TOKEN_VERSION` | No | Súbela para invalidar de golpe todas las sesiones abiertas |
+| `GOOGLE_OAUTH_*`, `SUMA_CORREOS_PERMITIDOS` | No | Entrar con Google, restringido a una lista de correos |
 | `GEMINI_*_MODEL`, `GEMINI_TIMEOUT_MS` | No | Ajuste fino de modelo y tiempos |
+
+> **Sin ninguna de las dos puertas, un despliegue responde 503 a propósito.**
+> Antes que servirse abierto a Internet —con la clave de IA de pago detrás—,
+> el sistema prefiere no arrancar, y el mensaje dice qué variable falta.
 
 **La clave de Gemini nunca llega al navegador**: sólo la leen las rutas de
 API, que se ejecutan en el servidor. Los datos del emisor sí llevan el prefijo
@@ -198,11 +206,30 @@ API, que se ejecutan en el servidor. Los datos del emisor sí llevan el prefijo
 ### 2. Proteger el acceso
 
 Al desplegar, la aplicación queda en una URL pública y cualquiera que la
-encuentre puede lanzar búsquedas que se facturan contra vuestra clave. Con
-`SUMA_ACCESS_PASSWORD` definida, `src/proxy.ts` pide una contraseña compartida
-con el diálogo propio del navegador —cubre también las rutas de API y la
-descarga del PDF— y sin ella no hace nada, que es lo cómodo en local. Si tenéis
-plan de pago, la *Password Protection* de Vercel hace lo mismo desde el panel.
+encuentre puede lanzar búsquedas que se facturan contra vuestra clave. Hay dos
+formas de cerrarla, y **al menos una es obligatoria**:
+
+**Cuentas de verdad (recomendado).** Define `SESSION_SECRET` y crea la primera
+cuenta en `/acceso/alta`: cada persona con su usuario, su contraseña (guardada
+como hash scrypt) y un segundo factor TOTP de seis dígitos. La pantalla de alta
+genera el código QR, los códigos de recuperación y el valor de `SUMA_USUARIOS`
+listo para pegar. Opcionalmente, `GOOGLE_OAUTH_*` añade el acceso con Google
+restringido a los correos de `SUMA_CORREOS_PERMITIDOS`.
+
+**Contraseña compartida (transitorio).** Con `SUMA_ACCESS_PASSWORD`,
+`src/proxy.ts` pide una contraseña con el diálogo propio del navegador. Sigue
+valiendo mientras no haya `SESSION_SECRET`, y es la llave que permite crear la
+primera cuenta.
+
+**Sin ninguna de las dos, un despliegue no sirve nada** (503). La detección de
+«despliegue» es cualquier compilación de producción, no sólo Vercel: para
+levantar un servidor de producción en abierto —en local, o en las pruebas de
+extremo a extremo— hay que pedirlo explícitamente con
+`SUMA_ABIERTO_EN_LOCAL=1`. `next dev` no lo necesita.
+
+La comprobación se hace en dos capas independientes: el proxy la hace pronto,
+y `src/lib/auth/dal.ts` la repite junto a los datos, que es donde la
+documentación de Next.js insiste en ponerla.
 
 ### 3. Ajustes del panel
 
