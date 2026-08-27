@@ -45,3 +45,32 @@ describe('política de reintento', () => {
     expect(retryDelay(fatal, 0, 60_000)).toBeNull();
   });
 });
+
+describe('esquemas de respuesta para Gemini', () => {
+  it('ningún enum contiene la cadena vacía, que la API rechaza con 400', async () => {
+    // Regresión del fallo visto en producción: INVALID_ARGUMENT
+    // «response_schema...enum[0]: cannot be empty».
+    const schemas = await import('@/lib/gemini/schemas');
+
+    const walk = (node: unknown, path: string): void => {
+      if (Array.isArray(node)) {
+        node.forEach((item, index) => walk(item, `${path}[${index}]`));
+        return;
+      }
+      if (node && typeof node === 'object') {
+        for (const [key, value] of Object.entries(node)) {
+          if (key === 'enum' && Array.isArray(value)) {
+            for (const option of value) {
+              expect(String(option).length, `${path}.enum contiene un valor vacío`).toBeGreaterThan(0);
+            }
+          }
+          walk(value, `${path}.${key}`);
+        }
+      }
+    };
+
+    for (const [name, schema] of Object.entries(schemas)) {
+      walk(schema, name);
+    }
+  });
+});

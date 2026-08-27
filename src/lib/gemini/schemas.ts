@@ -45,8 +45,10 @@ export const materialRequestResponseSchema: Schema = {
     },
     quantityUnit: {
       type: Type.STRING,
-      description: 'Unidad de la cantidad mencionada. Cadena vacía si no ha indicado ninguna.',
-      enum: ['', ...MEASURE_UNITS],
+      description: "Unidad de la cantidad mencionada. Usa 'ninguna' si no ha indicado unidad.",
+      // La API rechaza la cadena vacía dentro de un enum: el «sin valor» es el
+      // centinela 'ninguna', que la normalización descarta por no ser unidad.
+      enum: [...MEASURE_UNITS, 'ninguna'],
     },
     typicalMeasureUnit: {
       type: Type.STRING,
@@ -248,8 +250,8 @@ export const quantityResponseSchema: Schema = {
     value: { type: Type.NUMBER, description: 'Cantidad numérica. 0 si understood es false.' },
     unit: {
       type: Type.STRING,
-      description: 'Unidad de la cantidad.',
-      enum: ['', ...MEASURE_UNITS],
+      description: "Unidad de la cantidad. Usa 'ninguna' si understood es false.",
+      enum: [...MEASURE_UNITS, 'ninguna'],
     },
     wastePct: {
       type: Type.NUMBER,
