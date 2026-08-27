@@ -69,7 +69,15 @@ test.describe('proceso completo de presupuesto', () => {
     // Paso 8: datos del cliente y descarga del PDF.
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText(/Margen de ganancia/)).toBeVisible();
+    // El resumen económico desglosa el margen elegido en el paso anterior.
+    await expect(dialog.locator('dt', { hasText: /Margen de ganancia \(25/ })).toBeVisible();
+
+    // Y el margen se puede cambiar aquí mismo, sin rehacer el recorrido: al
+    // bajarlo, el total tiene que bajar con él.
+    const totalCon25 = await dialog.locator('dd').last().innerText();
+    await dialog.getByRole('button', { name: '10 %' }).click();
+    await expect(dialog.locator('dt', { hasText: /Margen de ganancia \(10/ })).toBeVisible();
+    expect(await dialog.locator('dd').last().innerText()).not.toBe(totalCon25);
 
     await dialog.getByLabel('Razón social o nombre').fill('Promociones Costa del Sol, S.L.');
     await dialog.getByLabel('CIF / NIF').fill('B29123456');

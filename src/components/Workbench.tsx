@@ -281,6 +281,7 @@ export function Workbench({
               onRemoveLabor={removeLaborLine}
               onClear={clearBudget}
               onLabor={() => setLaborOpen(true)}
+              onMargin={() => setMarginOpen(true)}
               onFinalize={() => setMarginOpen(true)}
               busy={status === 'generando-pdf'}
             />
@@ -342,6 +343,10 @@ export function Workbench({
                 setBudgetSheetOpen(false);
                 setLaborOpen(true);
               }}
+              onMargin={() => {
+                setBudgetSheetOpen(false);
+                setMarginOpen(true);
+              }}
               onFinalize={() => {
                 setBudgetSheetOpen(false);
                 setMarginOpen(true);
@@ -366,6 +371,11 @@ export function Workbench({
       />
 
       <MarginDialog
+        /*
+         * Se vuelve a montar cada vez que se abre, para que el campo muestre
+         * el margen vigente aunque se haya cambiado desde la pantalla final.
+         */
+        key={marginOpen ? 'margen-abierto' : 'margen-cerrado'}
         open={marginOpen}
         onClose={() => setMarginOpen(false)}
         marginPct={marginPct}
@@ -382,6 +392,8 @@ export function Workbench({
         onClose={() => setFinalizeOpen(false)}
         client={client}
         onClientChange={setClient}
+        marginPct={marginPct}
+        onMarginChange={setMarginPct}
         discountPct={discountPct}
         onDiscountChange={setDiscountPct}
         vatPct={vatPct}

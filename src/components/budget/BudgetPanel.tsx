@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileDown, HardHat, Info, Package, Trash2 } from 'lucide-react';
+import { FileDown, HardHat, Info, Package, Pencil, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatPrecise } from '@/lib/format';
@@ -23,6 +23,8 @@ interface BudgetPanelProps {
   onClear: () => void;
   /** Abre el paso de mano de obra, previo a finalizar. */
   onLabor: () => void;
+  /** Abre el paso del margen de ganancia. */
+  onMargin: () => void;
   onFinalize: () => void;
   busy: boolean;
   className?: string;
@@ -36,6 +38,7 @@ export function BudgetPanel({
   onRemoveLabor,
   onClear,
   onLabor,
+  onMargin,
   onFinalize,
   busy,
   className,
@@ -131,13 +134,26 @@ export function BudgetPanel({
             </>
           ) : null}
           <Row label="Coste de la obra" value={formatCurrency(totals.costSubtotal)} />
-          {totals.marginAmount > 0 ? (
-            <Row
-              label={`Margen (${formatPrecise(totals.marginPct)} %)`}
-              value={`+${formatCurrency(totals.marginAmount)}`}
-              tone="success"
-            />
-          ) : null}
+
+          {/*
+            La fila del margen es un botón: se ve el porcentaje y se puede
+            cambiar ahí mismo, sin tener que recordar en qué paso estaba.
+          */}
+          <button
+            type="button"
+            onClick={onMargin}
+            disabled={lines.length === 0}
+            className="flex items-baseline justify-between gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-suma-high disabled:cursor-not-allowed disabled:hover:bg-transparent"
+            title="Cambiar el margen de ganancia"
+          >
+            <span className="flex items-center gap-1 text-suma-muted">
+              Margen ({formatPrecise(totals.marginPct)} %)
+              <Pencil className="size-3 text-suma-faint" aria-hidden />
+            </span>
+            <span className="font-medium text-suma-success tabular-nums">
+              +{formatCurrency(totals.marginAmount)}
+            </span>
+          </button>
           {totals.discountPct > 0 ? (
             <Row
               label={`Descuento (${formatPrecise(totals.discountPct)} %)`}

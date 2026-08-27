@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { FileDown, X } from 'lucide-react';
+import { FileDown, TrendingUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Field, TextAreaField, fieldControlClass } from '@/components/ui/Field';
 import { SumaLogo } from '@/components/brand/SumaLogo';
@@ -10,6 +10,9 @@ import { issuerIsPlaceholder } from '@/lib/brand';
 import { DEFAULT_VAT_PCT, REDUCED_VAT_PCT, validUntil } from '@/lib/pricing';
 import type { BudgetTotals, ClientDetails } from '@/lib/types';
 import { cn } from '@/lib/cn';
+
+/** Márgenes habituales del sector, los mismos que ofrece el paso anterior. */
+const QUICK_MARGINS = [10, 15, 20, 25, 30, 40];
 
 /**
  * Paso 7 del proceso: datos del cliente y condiciones económicas antes de
@@ -25,6 +28,8 @@ interface FinalizeDialogProps {
   onClose: () => void;
   client: ClientDetails;
   onClientChange: (client: Partial<ClientDetails>) => void;
+  marginPct: number;
+  onMarginChange: (value: number) => void;
   discountPct: number;
   onDiscountChange: (value: number) => void;
   vatPct: number;
@@ -42,6 +47,8 @@ export function FinalizeDialog({
   onClose,
   client,
   onClientChange,
+  marginPct,
+  onMarginChange,
   discountPct,
   onDiscountChange,
   vatPct,
@@ -191,6 +198,62 @@ export function FinalizeDialog({
             <h3 className="text-xs font-bold tracking-wide text-suma-red uppercase">
               Condiciones económicas
             </h3>
+
+            {/*
+              El margen va aquí, con el descuento y el IVA: es una condición
+              económica más y la que más mueve el total, así que tiene que
+              poder cambiarse en el último momento sin rehacer el recorrido.
+            */}
+            <div className="flex flex-col gap-1.5 rounded-lg bg-suma-canvas px-3 py-2.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <label
+                  htmlFor="suma-margen-final"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-suma-muted"
+                >
+                  <TrendingUp className="size-3.5" aria-hidden />
+                  Margen de ganancia
+                </label>
+                <span className="text-xs text-suma-success tabular-nums">
+                  +{formatCurrency(totals.marginAmount)}
+                </span>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {QUICK_MARGINS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => onMarginChange(value)}
+                    aria-pressed={marginPct === value}
+                    className={cn(
+                      'rounded-full px-2.5 py-1 text-[12px] font-semibold ring-1 transition-colors ring-inset',
+                      marginPct === value
+                        ? 'bg-suma-red text-white ring-suma-red'
+                        : 'bg-suma-high text-suma-muted ring-suma-border hover:text-suma-ink hover:ring-suma-muted',
+                    )}
+                  >
+                    {value} %
+                  </button>
+                ))}
+
+                <div className="relative ml-auto w-24">
+                  <input
+                    id="suma-margen-final"
+                    type="number"
+                    min={0}
+                    max={300}
+                    step={0.5}
+                    value={marginPct}
+                    onChange={(event) => onMarginChange(Number(event.target.value) || 0)}
+                    className={cn(fieldControlClass, 'pr-7 text-right tabular-nums')}
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-sm text-suma-muted">
+                    %
+                  </span>
+                </div>
+              </div>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex flex-col gap-1">
                 <label
