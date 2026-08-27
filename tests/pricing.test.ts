@@ -25,6 +25,7 @@ function offer(overrides: Partial<SupplierOffer> = {}): SupplierOffer {
     availability: null,
     delivery: null,
     sourceUrl: null,
+    linkVerified: false,
     confidence: 'alta',
     highlight: null,
     group: null,

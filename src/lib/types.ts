@@ -84,6 +84,13 @@ export const supplierOfferSchema = z.object({
   /** Notas de entrega en la provincia de Málaga. */
   delivery: z.string().nullable().default(null),
   sourceUrl: z.string().nullable().default(null),
+  /**
+   * `true` si el servidor comprobó, en el momento de la búsqueda, que la
+   * ficha de `sourceUrl` respondía (o que Google la tenía indexada). No es
+   * una garantía perpetua —los catálogos cambian—, pero sí la evidencia de
+   * que el producto existía al buscarlo.
+   */
+  linkVerified: z.boolean().default(false),
   confidence: priceConfidenceSchema,
   /** Motivo por el que esta opción puede interesar (calidad/precio/plazo). */
   highlight: z.string().nullable().default(null),

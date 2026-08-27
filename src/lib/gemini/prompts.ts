@@ -49,6 +49,8 @@ Localiza entre 4 y 8 opciones REALMENTE DISTINTAS, cubriendo toda la horquilla d
 
 REGLA DE ORO: cada opción debe llevar la URL EXACTA de la ficha del producto en la tienda, la página concreta donde se ve el precio y se puede comprar o encargar. No vale la portada del proveedor ni una página de categoría. Prioriza tiendas con venta online o recogida en tienda (Obramat, Leroy Merlin, Bauhaus, Brico Depot, ManoMano, Isolana y tiendas online especializadas que sirvan en Málaga). Si de un producto no consigues la ficha exacta, sáltalo y busca otro: una opción sin enlace de compra vale menos que una opción menos glamurosa con enlace.
 
+REGLA DE VIGENCIA: sólo valen productos A LA VENTA HOY. Si la ficha dice «descatalogado», «agotado», «sin stock», «producto no disponible» o la página ya no existe, descarta esa opción y busca una alternativa disponible; no la incluyas ni siquiera como referencia. Anota la disponibilidad tal y como la declare la tienda (en stock, bajo pedido, plazo de entrega). El sistema re-verifica cada enlace antes de mostrarlo, así que una URL inventada o caducada se detecta y deja la opción sin enlace: mejor dedicar el esfuerzo a fichas reales y vigentes.
+
 De cada opción anota:
 1. Nombre comercial exacto del producto y marca o fabricante.
 2. Proveedor y municipio de ${searchScope.province} donde se puede comprar o que sirve allí.
@@ -76,6 +78,8 @@ ${findings}
 INSTRUCCIONES
 - Conserva únicamente información presente en el informe. No añadas proveedores ni productos que no aparezcan.
 - \`sourceUrl\` es la URL de la ficha del producto que cita el informe, copiada literalmente. Si el informe no da la ficha exacta de una opción, deja \`sourceUrl\` vacío: jamás inventes ni "completes" una URL.
+- Si el informe incluye una sección de RESULTADOS DE LA BÚSQUEDA PROGRAMÁTICA, esas URLs vienen literales de la API de Google y son las más fiables de todo el informe: cuando una opción se corresponda con una de esas fichas, usa exactamente esa URL como \`sourceUrl\`, y da preferencia a construir opciones a partir de esas fichas frente a menciones sin enlace.
+- Descarta las opciones que el informe señale como descatalogadas, agotadas o no disponibles actualmente.
 - \`price\` es el precio de UNA unidad de venta. \`saleUnit\` debe ser una de: ${SALE_UNITS.join(', ')}.
 - \`coverageValue\` y \`coverageUnit\` expresan cuánta magnitud medible rinde UNA unidad de venta:
   · Si el precio ya es por m², por metro, por kg, por m³ o por unidad → coverageValue = 1 y coverageUnit coincide con saleUnit.

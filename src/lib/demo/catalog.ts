@@ -1039,6 +1039,7 @@ export function searchDemoCatalog(query: string, limit = 6): SupplierOffer[] {
         availability: variant.availability,
         delivery: variant.delivery,
         sourceUrl: variant.sourceUrl ?? null,
+        linkVerified: false,
         confidence: variant.confidence,
         highlight: variant.highlight,
         group: product.id,

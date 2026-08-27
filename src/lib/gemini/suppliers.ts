@@ -16,6 +16,13 @@ import { offersResponseSchema } from './schemas';
 import { searchDemoCatalog } from '../demo/catalog';
 import { formatCseEvidence, searchProductPages } from '../search/google-cse';
 import {
+  VERIFY_DEFAULT_REMAINING_MS,
+  canonicalUrl,
+  checkLinks,
+  verificationCap,
+  type LinkStatus,
+} from '../search/verify-links';
+import {
   supplierOfferSchema,
   type GroundingSource,
   type MaterialRequest,
@@ -106,24 +113,80 @@ export async function searchSuppliers(
     ? await structureFindings(description, findings, budget)
     : await runKnowledgeOnlySearch(description, budget);
 
-  const offers = structured.offers.filter((offer) => offer.price > 0);
+  let summary = structured.summary;
+  let offers = structured.offers.filter((offer) => offer.price > 0);
+  let demoMode = false;
 
   if (offers.length === 0) {
     const fallback = searchDemoCatalog(`${request.material} ${request.category}`);
     if (fallback.length > 0) {
-      return {
-        summary:
-          'No he podido confirmar precios publicados para este material, así que te muestro ' +
-          'referencias de mercado orientativas de distribuidores que sirven en Málaga. ' +
-          'Conviene confirmarlas con el proveedor antes de cerrar el presupuesto.',
-        offers: fallback,
-        sources,
-        demoMode: true,
-      };
+      summary =
+        'No he podido confirmar precios publicados para este material, así que te muestro ' +
+        'referencias de mercado orientativas de distribuidores que sirven en Málaga. ' +
+        'Conviene confirmarlas con el proveedor antes de cerrar el presupuesto.';
+      offers = fallback;
+      demoMode = true;
     }
   }
 
-  return { summary: structured.summary, offers, sources, demoMode: false };
+  // Último control de calidad antes de responder: se comprueba en vivo que
+  // cada ficha enlazada sigue existiendo. Los enlaces muertos se retiran y
+  // los confirmados (por respuesta directa o por estar en el índice de la
+  // búsqueda programática) se marcan como verificados.
+  if (offers.some((offer) => offer.sourceUrl !== null)) {
+    const cap = verificationCap(budget?.remaining() ?? VERIFY_DEFAULT_REMAINING_MS);
+    const statuses = await checkLinks(
+      offers.map((offer) => offer.sourceUrl),
+      cap,
+    );
+    const indexed = new Set<string>();
+    for (const result of cseResults) {
+      const canonical = canonicalUrl(result.url);
+      if (canonical) indexed.add(canonical);
+    }
+    offers = applyLinkVerification(offers, statuses, indexed);
+  }
+
+  return { summary, offers, sources, demoMode };
+}
+
+/**
+ * Aplica el veredicto de la verificación de enlaces a las ofertas.
+ *
+ * - Ficha muerta (404/410 o redirección a portada): el enlace se retira y el
+ *   precio pasa a estimado, porque su fuente ya no existe.
+ * - Ficha que responde, o presente en el índice de Google de la búsqueda
+ *   programática: se marca `linkVerified`.
+ * - Sin veredicto (antibot, timeout, sin tiempo): el enlace se conserva tal
+ *   cual, sin marca. No se castiga lo que no se pudo comprobar.
+ *
+ * Después se reordena la preferencia por ofertas con enlace, de modo que una
+ * oferta que acaba de perder su ficha se descarta si quedan alternativas
+ * enlazadas suficientes.
+ */
+export function applyLinkVerification(
+  offers: SupplierOffer[],
+  statuses: Map<string, LinkStatus>,
+  indexedCanonicals: Set<string>,
+): SupplierOffer[] {
+  const annotated = offers.map((offer): SupplierOffer => {
+    if (!offer.sourceUrl) return offer;
+
+    const status = statuses.get(offer.sourceUrl) ?? 'unknown';
+    if (status === 'gone') {
+      return { ...offer, sourceUrl: null, linkVerified: false, confidence: 'estimada' };
+    }
+
+    const canonical = canonicalUrl(offer.sourceUrl);
+    const indexed = canonical !== null && indexedCanonicals.has(canonical);
+    if (status === 'ok' || indexed) {
+      return { ...offer, linkVerified: true };
+    }
+
+    return offer;
+  });
+
+  return preferLinkedOffers(annotated);
 }
 
 /** Primera llamada: búsqueda en Google con razonamiento en texto libre. */

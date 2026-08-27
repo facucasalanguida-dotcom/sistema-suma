@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import {
+  BadgeCheck,
   ChevronDown,
   CircleAlert,
   ExternalLink,
@@ -120,6 +121,17 @@ export function OfferCard({
           <Badge tone={confidence.tone}>
             <span title={confidence.title}>{confidence.label}</span>
           </Badge>
+          {offer.sourceUrl && offer.linkVerified ? (
+            <Badge tone="success">
+              <span
+                title="El sistema comprobó que la ficha del producto respondía en el momento de la búsqueda."
+                className="inline-flex items-center gap-1"
+              >
+                <BadgeCheck className="size-3" aria-hidden />
+                Enlace comprobado
+              </span>
+            </Badge>
+          ) : null}
           {offer.recommendedWastePct > 0 ? (
             <Badge tone="neutral">Merma {formatPrecise(offer.recommendedWastePct)} %</Badge>
           ) : null}
